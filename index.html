@@ -2399,12 +2399,16 @@ async function addComment(){
   inp.value='';
   closeMentionPopup();
 
-  /* Parse @mentions and create mention rows (Session 5) */
+  /* Parse @mentions and create mention + watcher rows (Session 5 / 5.5) */
   if(inserted){
     const ids=parseMentions(body).filter(uid=>uid!==ME.id);
     if(ids.length){
       const rows=ids.map(uid=>({comment_id:inserted.id,mentioned_user_id:uid}));
       try{await sb.from('mentions').insert(rows);}catch(e){/* ignore */}
+      /* Grant the mentioned users view access to this task (Session 5.5).
+         Upsert is safe — UNIQUE (task_id, user_id) prevents duplicates. */
+      const watcherRows=ids.map(uid=>({task_id:activeTaskId,user_id:uid,added_by:ME.id}));
+      try{await sb.from('task_watchers').upsert(watcherRows,{onConflict:'task_id,user_id'});}catch(e){/* ignore */}
     }
   }
 

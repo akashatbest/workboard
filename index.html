@@ -8,7 +8,7 @@
 <style>
 /* ============================================================
    WORKBOARD — Trello-faithful redesign
-   All JS hooks (ids, classes, onclick handlers) preserved.
+   Session 1 patches: XSS fix, topbar layout fix, inline card create
    ============================================================ */
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -29,7 +29,6 @@
   --shadow-card-hover:0 4px 8px -2px rgba(9,30,66,.25), 0 0 0 1px rgba(9,30,66,.08);
   --shadow-pop:0 8px 16px -4px rgba(9,30,66,.25), 0 0 1px rgba(9,30,66,.31);
   --shadow-modal:0 20px 32px -8px rgba(9,30,66,.25), 0 0 1px rgba(9,30,66,.31);
-  /* Trello board gradient */
   --board-bg:linear-gradient(135deg,#0079bf 0%,#5067c5 50%,#7d51b3 100%);
   --label-green:#61bd4f;
   --label-yellow:#f2d600;
@@ -148,7 +147,7 @@ h2{font-size:22px;font-weight:700;color:var(--ink);margin-bottom:4px;letter-spac
 }
 
 /* ============================================================
-   TOPBAR
+   TOPBAR — fixed-position so content can flow under safely
    ============================================================ */
 .topbar{
   background:rgba(0,0,0,.3);
@@ -159,7 +158,6 @@ h2{font-size:22px;font-weight:700;color:var(--ink);margin-bottom:4px;letter-spac
   position:sticky;top:0;z-index:300;
   border-bottom:1px solid rgba(255,255,255,.08);
 }
-/* When not on board view, topbar gets dark solid bg */
 body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.06)}
 
 .tb-left{display:flex;align-items:center;gap:18px}
@@ -229,34 +227,29 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 #pg-board{padding:0;background:var(--board-bg);min-height:calc(100vh - 48px)}
 #pg-overview,#pg-people{padding:28px 32px}
 
-/* Board page header — sits on the gradient */
+/* FIX: board-head needs explicit top padding so titles aren't clipped
+   when the sticky topbar overlaps on first render. */
 .board-head{
-  padding:18px 28px 14px;
+  padding:24px 28px 16px;
   display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  flex-wrap:wrap;
 }
-.board-head .page-title{color:#fff;font-size:20px;font-weight:700;letter-spacing:-0.01em;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+.board-head .page-title{color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.01em;text-shadow:0 1px 2px rgba(0,0,0,.2)}
 .board-head .page-sub{color:rgba(255,255,255,.85);font-size:13px;margin-top:3px;text-shadow:0 1px 2px rgba(0,0,0,.15)}
 .board-head .btn-ghost{background:rgba(255,255,255,.24);color:#fff}
 .board-head .btn-ghost:hover{background:rgba(255,255,255,.32)}
 .board-head .btn-ghost option{color:var(--ink)}
 .board-head .btn-acc{box-shadow:0 1px 0 rgba(9,30,66,.25),0 2px 6px rgba(0,0,0,.15)}
 
-/* Inner pages (overview, people) headers */
 .page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:16px}
 .page-title{font-size:22px;font-weight:700;color:var(--ink);letter-spacing:-0.01em}
 .page-sub{color:var(--muted);font-size:13px;margin-top:3px}
 
 /* ============================================================
-   KANBAN — board page
-   Each "person section" is a swimlane of 3 list-style columns.
+   KANBAN
    ============================================================ */
-.kanban-wrap{
-  padding:0 28px 28px;
-  overflow-y:auto;
-  /* set inline by JS after first render — keep override safe */
-}
+.kanban-wrap{padding:0 28px 28px;overflow-y:auto}
 
-/* Person swimlane card */
 .person-lane{
   margin-bottom:22px;
   background:rgba(255,255,255,.92);
@@ -280,10 +273,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   padding:2px 8px;border-radius:10px;
 }
 
-/* List columns inside a swimlane */
-.swimlane-cols{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
-}
+.swimlane-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 
 .k-col{
   background:var(--bg-col);
@@ -300,11 +290,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 }
 .k-title-row{display:flex;align-items:center;gap:8px;min-width:0}
 .k-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
-.k-title{
-  font-size:12px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;
-  color:var(--ink-soft);
-}
+.k-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft)}
 .k-count{
   background:rgba(9,30,66,.08);
   border-radius:10px;
@@ -331,6 +317,17 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 }
 .k-cards.drag-over{background:rgba(255,107,53,.15)}
 
+/* Drop indicator: thin colored line between cards while dragging.
+   Shows exactly where the dragged card will land. */
+.drop-indicator{
+  height:3px;
+  background:var(--accent);
+  border-radius:2px;
+  margin:2px 4px;
+  pointer-events:none;
+  box-shadow:0 0 0 2px rgba(255,107,53,.2);
+}
+
 .empty-col{
   text-align:center;
   font-size:12px;color:var(--muted-soft);
@@ -351,11 +348,46 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   text-align:left;
   margin:0 2px;
   transition:background .14s,color .14s;
+  width:calc(100% - 4px);
 }
 .add-card-btn:hover{background:rgba(9,30,66,.08);color:var(--ink)}
 
 /* ============================================================
-   TASK CARD — Trello-style with rich features
+   INLINE CARD COMPOSER (NEW — Session 1)
+   ============================================================ */
+.inline-composer{
+  margin:0 2px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.inline-composer textarea{
+  width:100%;
+  padding:10px 12px;
+  background:#fff;
+  border:none;
+  border-radius:8px;
+  font-family:inherit;
+  font-size:14px;
+  color:var(--ink);
+  resize:none;
+  outline:none;
+  box-shadow:0 1px 0 rgba(9,30,66,.25);
+  min-height:60px;
+  line-height:1.4;
+}
+.inline-composer textarea:focus{box-shadow:0 0 0 2px var(--accent)}
+.inline-composer-actions{display:flex;align-items:center;gap:6px}
+.composer-cancel{
+  width:30px;height:30px;border-radius:6px;
+  background:transparent;border:none;
+  color:var(--muted);cursor:pointer;
+  font-size:18px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .14s,color .14s;
+}
+.composer-cancel:hover{background:rgba(9,30,66,.08);color:var(--ink)}
+
+/* ============================================================
+   TASK CARD
    ============================================================ */
 .t-card{
   background:var(--bg-card);
@@ -374,27 +406,15 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 }
 .t-card.dragging{opacity:.55;transform:rotate(3deg) scale(.98);box-shadow:var(--shadow-pop)}
 
-/* Cover stripe (priority-based for now, label-color in future) */
-.t-cover{
-  height:8px;
-  background:var(--label-blue);
-}
+.t-cover{height:8px;background:var(--label-blue)}
 .t-card.pri-border-high .t-cover{background:linear-gradient(90deg,var(--label-red) 0%,#ff7452 100%)}
 .t-card.pri-border-medium .t-cover{background:linear-gradient(90deg,var(--label-orange) 0%,#ffbf66 100%)}
 .t-card.pri-border-low .t-cover{background:linear-gradient(90deg,var(--label-green) 0%,#8fd87a 100%)}
 
 .t-body{padding:8px 12px 10px}
 
-/* Label chips strip — small color bars at top */
-.t-labels{
-  display:flex;flex-wrap:wrap;gap:4px;
-  margin-bottom:6px;
-}
-.t-label{
-  height:8px;min-width:40px;max-width:56px;
-  border-radius:4px;
-  flex-shrink:0;
-}
+.t-labels{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.t-label{height:8px;min-width:40px;max-width:56px;border-radius:4px;flex-shrink:0}
 .t-label.l-green{background:var(--label-green)}
 .t-label.l-yellow{background:var(--label-yellow)}
 .t-label.l-orange{background:var(--label-orange)}
@@ -408,13 +428,10 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   color:var(--ink);
   margin-bottom:8px;
   word-wrap:break-word;
+  overflow-wrap:break-word;
 }
 
-/* Card badge row: due date, comments, checklist progress */
-.t-badges{
-  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
-  margin-bottom:6px;
-}
+.t-badges{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px}
 .t-badge{
   display:inline-flex;align-items:center;gap:4px;
   font-size:12px;font-weight:500;
@@ -423,18 +440,12 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   border-radius:4px;
 }
 .t-badge svg{width:13px;height:13px;flex-shrink:0}
-
 .t-badge.due-today{background:#fff3bf;color:#7a5c00}
 .t-badge.due-late{background:#ffd2cc;color:#bf2600}
 .t-badge.due-late svg{color:#bf2600}
-
 .t-badge.checklist-complete{background:#d3f1a7;color:#2e6b1a}
 
-/* Footer — priority pill + assignee avatar (mini) */
-.t-footer{
-  display:flex;align-items:center;justify-content:space-between;
-  gap:8px;margin-top:4px;
-}
+.t-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
 .pri{
   font-size:10px;font-weight:700;
   text-transform:uppercase;
@@ -448,7 +459,6 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .t-ass{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .t-ass .ava{width:24px;height:24px;font-size:9px;box-shadow:0 0 0 2px #fff}
 
-/* For Org Overview list rows that use .t-due */
 .t-due{
   font-size:11px;color:var(--muted);
   background:var(--line-soft);
@@ -458,34 +468,21 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .t-due.late{background:#ffd2cc;color:#bf2600}
 
 /* ============================================================
-   STATS (Org Overview)
+   STATS, OVERVIEW, PEOPLE — unchanged
    ============================================================ */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
 .stat{
-  background:#fff;
-  border-radius:10px;
+  background:#fff;border-radius:10px;
   padding:18px 20px;
   border-top:3px solid var(--line);
   box-shadow:0 1px 2px rgba(9,30,66,.08),0 0 0 1px rgba(9,30,66,.04);
 }
-.stat-label{
-  font-size:11px;font-weight:700;
-  letter-spacing:.06em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:8px;
-}
+.stat-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .stat-val{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-0.02em}
 .stat-sub{font-size:12px;color:var(--muted-soft);margin-top:3px}
 
-/* Overview list panel */
-.ov-panel{
-  background:#fff;border-radius:10px;
-  box-shadow:0 1px 2px rgba(9,30,66,.08),0 0 0 1px rgba(9,30,66,.04);
-}
-.ov-panel-head{
-  padding:14px 20px;
-  border-bottom:1px solid var(--line-soft);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-}
+.ov-panel{background:#fff;border-radius:10px;box-shadow:0 1px 2px rgba(9,30,66,.08),0 0 0 1px rgba(9,30,66,.04)}
+.ov-panel-head{padding:14px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .ov-panel-head-title{font-size:14px;font-weight:700;color:var(--ink)}
 .ov-panel-body{padding:6px 20px 16px}
 
@@ -499,13 +496,9 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .ov-row:last-child{border-bottom:none}
 .ov-row:hover{opacity:.7}
 
-/* ============================================================
-   PEOPLE
-   ============================================================ */
 .ppl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
 .p-card{
-  background:#fff;
-  border-radius:10px;
+  background:#fff;border-radius:10px;
   padding:18px 20px;
   display:flex;align-items:center;gap:14px;
   box-shadow:0 1px 2px rgba(9,30,66,.08),0 0 0 1px rgba(9,30,66,.04);
@@ -519,11 +512,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .p-name{font-size:15px;font-weight:700;color:var(--ink)}
 .p-email{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .p-meta{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
-.p-role{
-  font-size:10px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.05em;
-  padding:2px 8px;border-radius:10px;
-}
+.p-role{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:10px}
 .pr-ceo{background:#fff7d6;color:#7a5c00}
 .pr-manager{background:#e3fcef;color:#006644}
 .pr-member{background:var(--line-soft);color:var(--muted)}
@@ -582,7 +571,6 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   display:flex;gap:8px;justify-content:flex-end;
 }
 
-/* Modal inputs sit on white */
 .m-body .fg input,.m-body .fg select,.m-body .fg textarea{background:#fff;border-color:#fff}
 .m-body .fg input:hover,.m-body .fg select:hover,.m-body .fg textarea:hover{background:#fafbfc;border-color:#fafbfc}
 .m-body .fg input:focus,.m-body .fg select:focus,.m-body .fg textarea:focus{background:#fff;border-color:var(--accent)}
@@ -591,11 +579,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
    DETAIL MODAL
    ============================================================ */
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
-.dl{
-  font-size:11px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;
-  color:var(--muted);margin-bottom:6px;
-}
+.dl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
 .dv{font-size:14px;font-weight:600;color:var(--ink)}
 
 #d-desc>div{
@@ -606,25 +590,16 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   line-height:1.6;
   margin-bottom:8px;
   box-shadow:0 1px 2px rgba(9,30,66,.06);
+  white-space:pre-wrap;
+  word-wrap:break-word;
 }
 
 /* ============================================================
    COMMENTS
    ============================================================ */
-.comments-wrap{
-  border-top:1px solid var(--line-soft);
-  margin-top:18px;padding-top:18px;
-}
-.c-title{
-  font-size:12px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.06em;
-  color:var(--muted);margin-bottom:14px;
-}
-.c-list{
-  display:flex;flex-direction:column;gap:12px;
-  margin-bottom:14px;
-  max-height:240px;overflow-y:auto;
-}
+.comments-wrap{border-top:1px solid var(--line-soft);margin-top:18px;padding-top:18px}
+.c-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:14px}
+.c-list{display:flex;flex-direction:column;gap:12px;margin-bottom:14px;max-height:240px;overflow-y:auto}
 .c-item{display:flex;gap:10px}
 .c-body{
   flex:1;
@@ -636,7 +611,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .c-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .c-author{font-size:13px;font-weight:700;color:var(--ink)}
 .c-time{font-size:11px;color:var(--muted-soft)}
-.c-text{font-size:13px;color:var(--ink-soft);line-height:1.5;word-wrap:break-word}
+.c-text{font-size:13px;color:var(--ink-soft);line-height:1.5;word-wrap:break-word;white-space:pre-wrap}
 
 .c-input-row{display:flex;gap:8px;align-items:flex-end}
 .cinput{
@@ -675,16 +650,13 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .toast.ok{background:#006644}
 .toast.err{background:#bf2600}
 
-/* Scrollbars — subtle Trello-style */
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(9,30,66,.16);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-thumb:hover{background:rgba(9,30,66,.28);background-clip:padding-box;border:2px solid transparent}
-/* On the dark gradient board, lighten the scrollbar */
 #pg-board ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.32);background-clip:padding-box;border:2px solid transparent}
 #pg-board ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5);background-clip:padding-box;border:2px solid transparent}
 
-/* Drag handle hidden — entire card is draggable in this redesign */
 .drag-handle{display:none}
 </style>
 </head>
@@ -759,8 +731,8 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   <div class="modal">
     <div class="m-head"><div class="m-title" id="m-task-title">New Task</div><button class="m-close" onclick="closeModal('m-task')">&#x2715;</button></div>
     <div class="m-body">
-      <div class="fg"><label>Title</label><input type="text" id="t-title" placeholder="What needs to be done?"></div>
-      <div class="fg"><label>Description</label><textarea id="t-desc" placeholder="Add details..."></textarea></div>
+      <div class="fg"><label>Title</label><input type="text" id="t-title" maxlength="200" placeholder="What needs to be done?"></div>
+      <div class="fg"><label>Description</label><textarea id="t-desc" maxlength="2000" placeholder="Add details..."></textarea></div>
       <div class="form-row">
         <div class="fg"><label>Assign To</label><select id="t-assignee"></select></div>
         <div class="fg"><label>Priority</label><select id="t-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
@@ -793,7 +765,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
         <div class="c-list" id="c-list"></div>
         <div class="c-input-row">
           <div class="ava" id="c-ava" style="flex-shrink:0;margin-bottom:2px"></div>
-          <textarea class="cinput" id="cinput" placeholder="Add a comment... (Enter to post)" rows="1"></textarea>
+          <textarea class="cinput" id="cinput" maxlength="2000" placeholder="Add a comment... (Enter to post)" rows="1"></textarea>
           <button class="btn btn-acc btn-sm" onclick="addComment()" style="flex-shrink:0">Post</button>
         </div>
       </div>
@@ -806,8 +778,8 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   <div class="modal">
     <div class="m-head"><div class="m-title">Add Person</div><button class="m-close" onclick="closeModal('m-person')">&#x2715;</button></div>
     <div class="m-body">
-      <div class="fg"><label>Full Name</label><input type="text" id="p-name" placeholder="Rahul Sharma"></div>
-      <div class="fg"><label>Email</label><input type="email" id="p-email" placeholder="rahul@apporio.com"></div>
+      <div class="fg"><label>Full Name</label><input type="text" id="p-name" maxlength="100" placeholder="Rahul Sharma"></div>
+      <div class="fg"><label>Email</label><input type="email" id="p-email" maxlength="200" placeholder="rahul@apporio.com"></div>
       <div class="fg"><label>Password</label><input type="password" id="p-pass" placeholder="Min 6 characters"></div>
       <div class="form-row">
         <div class="fg"><label>Role</label><select id="p-role"><option value="member">Member</option><option value="manager">Manager</option></select></div>
@@ -823,7 +795,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
   <div class="modal">
     <div class="m-head"><div class="m-title">Edit Person</div><button class="m-close" onclick="closeModal('m-edit-person')">&#x2715;</button></div>
     <div class="m-body">
-      <div class="fg"><label>Full Name</label><input type="text" id="ep-name"></div>
+      <div class="fg"><label>Full Name</label><input type="text" id="ep-name" maxlength="100"></div>
       <div class="form-row">
         <div class="fg"><label>Role</label><select id="ep-role"><option value="member">Member</option><option value="manager">Manager</option><option value="ceo">CEO</option></select></div>
         <div class="fg"><label>Reports To</label><select id="ep-mgr"><option value="">None</option></select></div>
@@ -841,6 +813,21 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 let ME=null,PROFILES=[],TASKS=[],activeTaskId=null,editingPersonId=null,dragId=null,dragMoved=false;
 const COLS=[{key:'todo',label:'To Do',color:'#0079bf'},{key:'in_progress',label:'In Progress',color:'#ff9f1a'},{key:'done',label:'Done',color:'#61bd4f'}];
 const AVC=['#0079bf','#ff6b35','#7c5ce0','#16a34a','#ca8a04','#0891b2','#c377e0','#eb5a46'];
+
+/* ============================================================
+   SECURITY — XSS escape helper (NEW — Session 1)
+   Use esc() on every user-supplied string before innerHTML.
+   ============================================================ */
+function esc(s){
+  if(s==null)return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
 function ga(name){const i=(name||'?').split(' ').map(n=>n[0]||'').join('').toUpperCase().slice(0,2);return{i,c:AVC[i.charCodeAt(0)%AVC.length]};}
 
 sb.auth.onAuthStateChange(async(ev,sess)=>{
@@ -870,10 +857,9 @@ async function boot(user){
 async function loadAll(){
   const[pr,tk]=await Promise.all([
     sb.from('profiles').select('*').order('full_name'),
-    sb.from('tasks').select('*').order('created_at',{ascending:false})
+    sb.from('tasks').select('*').order('position',{ascending:true,nullsFirst:false}).order('created_at',{ascending:false})
   ]);
   PROFILES=pr.data||[];TASKS=tk.data||[];
-  // Pull comment counts per task in one shot. Safe to fail silently.
   try{
     const{data:comments}=await sb.from('comments').select('task_id');
     const counts={};
@@ -928,7 +914,6 @@ function goto(page,btn){
   if(btn)btn.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('pg-'+page).classList.add('active');
-  // toggle topbar dark-solid look on non-board pages
   if(page==='board')document.body.classList.remove('not-board');
   else document.body.classList.add('not-board');
   if(page==='board')renderBoard();
@@ -941,8 +926,8 @@ function setupFilter(){
   const sel=document.getElementById('board-filter');
   const cur=sel.value;
   let opts='<option value="mine">My Tasks</option>';
-  if(ME.role==='ceo'){opts+='<option value="all">All Tasks</option>';PROFILES.filter(p=>p.id!==ME.id).forEach(p=>{opts+=`<option value="${p.id}">${p.full_name}</option>`;});}
-  else if(ME.role==='manager'){const team=PROFILES.filter(p=>p.manager_id===ME.id);if(team.length){opts+='<option value="team">Full Team</option>';team.forEach(p=>{opts+=`<option value="${p.id}">${p.full_name}</option>`;});}}
+  if(ME.role==='ceo'){opts+='<option value="all">All Tasks</option>';PROFILES.filter(p=>p.id!==ME.id).forEach(p=>{opts+=`<option value="${esc(p.id)}">${esc(p.full_name)}</option>`;});}
+  else if(ME.role==='manager'){const team=PROFILES.filter(p=>p.manager_id===ME.id);if(team.length){opts+='<option value="team">Full Team</option>';team.forEach(p=>{opts+=`<option value="${esc(p.id)}">${esc(p.full_name)}</option>`;});}}
   sel.innerHTML=opts;
   if([...sel.options].some(o=>o.value===cur))sel.value=cur;
 }
@@ -974,26 +959,38 @@ function renderBoard(){
 
 function renderPersonBoard(person,tasks,canAdd){
   const{i,c}=ga(person.full_name);
-  const todo=tasks.filter(t=>t.status==='todo');
-  const inp=tasks.filter(t=>t.status==='in_progress');
-  const done=tasks.filter(t=>t.status==='done');
+  /* Sort by position asc (nulls last), then created_at desc as tiebreaker.
+     This is what the column drag-ordering reads/writes. */
+  const sortByPos=(a,b)=>{
+    const ap=typeof a.position==='number'?a.position:Number.POSITIVE_INFINITY;
+    const bp=typeof b.position==='number'?b.position:Number.POSITIVE_INFINITY;
+    if(ap!==bp)return ap-bp;
+    return new Date(b.created_at)-new Date(a.created_at);
+  };
+  const todo=tasks.filter(t=>t.status==='todo').sort(sortByPos);
+  const inp=tasks.filter(t=>t.status==='in_progress').sort(sortByPos);
+  const done=tasks.filter(t=>t.status==='done').sort(sortByPos);
   const open=tasks.filter(t=>t.status!=='done').length;
   const roleClass={ceo:'pr-ceo',manager:'pr-manager',member:'pr-member'}[person.role]||'pr-member';
+  const safeName=esc(person.full_name);
+  const safeRole=esc(person.role);
+  const safeId=esc(person.id);
   return `<div class="person-lane">
     <div class="person-head">
-      <div class="ava ava-md" style="background:${c}">${i}</div>
+      <div class="ava ava-md" style="background:${c}">${esc(i)}</div>
       <div style="flex:1;min-width:0">
-        <div class="person-name">${person.full_name}</div>
+        <div class="person-name">${safeName}</div>
         <div class="person-meta">
-          <span class="person-role-pill ${roleClass}">${person.role}</span>
+          <span class="person-role-pill ${roleClass}">${safeRole}</span>
           <span>${open} open · ${tasks.length} total</span>
         </div>
       </div>
-      ${canAdd?`<button class="btn btn-acc btn-xs" onclick="openTaskModal('${person.id}')">+ Task</button>`:''}
+      ${canAdd?`<button class="btn btn-acc btn-xs" onclick="openTaskModal('${safeId}')">+ Task</button>`:''}
     </div>
     <div class="swimlane-cols">
       ${COLS.map(col=>{
         const items={todo,in_progress:inp,done}[col.key];
+        const composerId='cmp-'+safeId+'-'+col.key;
         return `
         <div class="k-col">
           <div class="k-head">
@@ -1002,12 +999,13 @@ function renderPersonBoard(person,tasks,canAdd){
               <span class="k-title">${col.label}</span>
               <span class="k-count">${items.length}</span>
             </div>
-            ${canAdd?`<button class="k-add" title="Add a card" onclick="openTaskModal('${person.id}','${col.key}')">+</button>`:''}
+            ${canAdd?`<button class="k-add" title="Add a card" onclick="showInlineComposer('${safeId}','${col.key}')">+</button>`:''}
           </div>
-          <div class="k-cards" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}','${person.id}')" ondragleave="onDragLeave(event)">
+          <div class="k-cards" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}','${safeId}')" ondragleave="onDragLeave(event)" data-col="${col.key}" data-person="${safeId}">
             ${items.map(t=>tCardHTML(t,false)).join('')}
             ${items.length===0?'<div class="empty-col">No tasks</div>':''}
-            ${canAdd?`<button class="add-card-btn" onclick="openTaskModal('${person.id}','${col.key}')">+ Add a card</button>`:''}
+            <div id="${composerId}" style="display:none"></div>
+            ${canAdd?`<button class="add-card-btn" id="addbtn-${safeId}-${col.key}" onclick="showInlineComposer('${safeId}','${col.key}')">+ Add a card</button>`:''}
           </div>
         </div>`;
       }).join('')}
@@ -1025,19 +1023,9 @@ function tCardHTML(t,showA){
   const dueStr=due?due.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';
   const canDrag=ME.role==='ceo'||ME.role==='manager'||t.assignee_id===ME.id;
 
-  // ── Card features ─────────────────────────────────────────
-  // 1) LABELS — t.labels expected as array of color names: ['green','red',...]
-  //    Schema not yet present — render-safe with optional chaining.
   const labels=Array.isArray(t.labels)?t.labels:[];
-
-  // 2) COMMENT COUNT — populated by loadAll() into t._comment_count
   const commentCount=t._comment_count||0;
-
-  // 3) ATTACHMENT COUNT — t.attachment_count expected as integer column
   const attachCount=t.attachment_count||0;
-
-  // 4) CHECKLIST PROGRESS — t.checklist expected as JSON: [{text,done},...]
-  //    or t.checklist_total / t.checklist_done as integers.
   let checklistTotal=0, checklistDone=0;
   if(Array.isArray(t.checklist)){
     checklistTotal=t.checklist.length;
@@ -1048,7 +1036,6 @@ function tCardHTML(t,showA){
   }
   const checklistComplete=checklistTotal>0&&checklistDone===checklistTotal;
 
-  // SVG icons
   const icoClock=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
   const icoChat=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
   const icoAttach=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>`;
@@ -1057,31 +1044,122 @@ function tCardHTML(t,showA){
   const dueClass=late?' due-late':(isToday?' due-today':'');
   const hasBadges=dueStr||commentCount||attachCount||checklistTotal>0;
 
-  return `<div class="t-card pri-border-${t.priority}" id="tc-${t.id}"
+  /* SECURITY: every interpolated DB value is escaped before innerHTML */
+  return `<div class="t-card pri-border-${esc(t.priority)}" id="tc-${esc(t.id)}"
+    data-task-id="${esc(t.id)}"
     ${canDrag?'draggable="true"':''}
-    ondragstart="onDragStart(event,'${t.id}')"
+    ondragstart="onDragStart(event,'${esc(t.id)}')"
     ondragend="onDragEnd(event)"
     ondragenter="event.preventDefault()"
-    onclick="handleCardClick(event,'${t.id}')">
+    onclick="handleCardClick(event,'${esc(t.id)}')">
     <div class="t-cover"></div>
     <div class="t-body">
-      ${labels.length?`<div class="t-labels">${labels.map(l=>`<div class="t-label l-${l}"></div>`).join('')}</div>`:''}
-      <div class="t-title-text">${t.title}</div>
+      ${labels.length?`<div class="t-labels">${labels.map(l=>`<div class="t-label l-${esc(l)}"></div>`).join('')}</div>`:''}
+      <div class="t-title-text">${esc(t.title)}</div>
       ${hasBadges?`<div class="t-badges">
-        ${dueStr?`<div class="t-badge${dueClass}">${icoClock}<span>${dueStr}</span></div>`:''}
+        ${dueStr?`<div class="t-badge${dueClass}">${icoClock}<span>${esc(dueStr)}</span></div>`:''}
         ${commentCount?`<div class="t-badge">${icoChat}<span>${commentCount}</span></div>`:''}
         ${attachCount?`<div class="t-badge">${icoAttach}<span>${attachCount}</span></div>`:''}
         ${checklistTotal>0?`<div class="t-badge${checklistComplete?' checklist-complete':''}">${icoCheck}<span>${checklistDone}/${checklistTotal}</span></div>`:''}
       </div>`:''}
       <div class="t-footer">
-        <div class="pri pri-${t.priority}">${t.priority}</div>
-        ${ass?`<div class="t-ass" title="${ass.full_name}"><div class="ava" style="background:${c}">${i}</div></div>`:'<div></div>'}
+        <div class="pri pri-${esc(t.priority)}">${esc(t.priority)}</div>
+        ${ass?`<div class="t-ass" title="${esc(ass.full_name)}"><div class="ava" style="background:${c}">${esc(i)}</div></div>`:'<div></div>'}
       </div>
     </div>
   </div>`;
 }
 
-// ── DRAG & DROP — separate from click ──
+/* ============================================================
+   INLINE CARD COMPOSER (NEW — Session 1)
+   Click "+ Add a card" → inline textarea appears in column.
+   Type title, hit Enter or "Add card" button → saved.
+   Stays open with focus for rapid sequential adds.
+   ============================================================ */
+function showInlineComposer(personId,colKey){
+  // Close any other open composer first
+  document.querySelectorAll('.inline-composer').forEach(c=>c.remove());
+  document.querySelectorAll('.add-card-btn').forEach(b=>b.style.display='');
+  
+  const slotId='cmp-'+personId+'-'+colKey;
+  const slot=document.getElementById(slotId);
+  if(!slot)return;
+  const addBtn=document.getElementById('addbtn-'+personId+'-'+colKey);
+  if(addBtn)addBtn.style.display='none';
+  
+  slot.style.display='';
+  slot.innerHTML=`<div class="inline-composer">
+    <textarea placeholder="Enter a title for this card..." maxlength="200"
+      onkeydown="composerKeydown(event,'${personId}','${colKey}')"></textarea>
+    <div class="inline-composer-actions">
+      <button class="btn btn-acc btn-sm" onclick="commitInlineComposer('${personId}','${colKey}')">Add card</button>
+      <button class="composer-cancel" title="Cancel" onclick="hideInlineComposer('${personId}','${colKey}')">&#x2715;</button>
+    </div>
+  </div>`;
+  const ta=slot.querySelector('textarea');
+  ta.focus();
+}
+
+function hideInlineComposer(personId,colKey){
+  const slotId='cmp-'+personId+'-'+colKey;
+  const slot=document.getElementById(slotId);
+  if(slot){slot.innerHTML='';slot.style.display='none';}
+  const addBtn=document.getElementById('addbtn-'+personId+'-'+colKey);
+  if(addBtn)addBtn.style.display='';
+}
+
+function composerKeydown(e,personId,colKey){
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    commitInlineComposer(personId,colKey);
+  }else if(e.key==='Escape'){
+    hideInlineComposer(personId,colKey);
+  }
+}
+
+async function commitInlineComposer(personId,colKey){
+  const slotId='cmp-'+personId+'-'+colKey;
+  const slot=document.getElementById(slotId);
+  if(!slot)return;
+  const ta=slot.querySelector('textarea');
+  if(!ta)return;
+  const title=ta.value.trim();
+  if(!title){showToast('Enter a title','err');ta.focus();return;}
+  
+  // Disable composer while saving
+  ta.disabled=true;
+
+  /* Compute position: append to bottom of destination column */
+  const colTasks=TASKS.filter(t=>t.assignee_id===personId&&t.status===colKey);
+  const maxPos=colTasks.reduce((m,t)=>typeof t.position==='number'&&t.position>m?t.position:m,0);
+  const newPos=maxPos+1024;
+
+  const payload={
+    title,
+    description:null,
+    assignee_id:personId,
+    priority:'medium',
+    status:colKey,
+    due_date:null,
+    position:newPos,
+    created_by:ME.id
+  };
+  const{data,error}=await sb.from('tasks').insert(payload).select().single();
+  if(error){
+    showToast('Error: '+error.message,'err');
+    ta.disabled=false;ta.focus();
+    return;
+  }
+  
+  // Optimistically add to local state and re-render
+  if(data)TASKS=[{...data,_comment_count:0},...TASKS];
+  renderBoard();
+  showToast('Card added','ok');
+  
+  // Re-open the composer in the same column for rapid sequential adds
+  showInlineComposer(personId,colKey);
+}
+
 function makeDraggable(id){
   const el=document.getElementById('tc-'+id);
   if(el)el.setAttribute('draggable','true');
@@ -1099,22 +1177,128 @@ function onDragStart(e,id){
 function onDragEnd(e){
   e.target.classList.remove('dragging');
   document.querySelectorAll('.k-cards').forEach(c=>c.classList.remove('drag-over'));
+  document.querySelectorAll('.drop-indicator').forEach(d=>d.remove());
   setTimeout(()=>{dragMoved=false;},50);
 }
-function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
-function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function onDragOver(e){
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+
+  /* Compute where to show the drop indicator: between which two cards. */
+  const container=e.currentTarget;
+  const cards=[...container.querySelectorAll('.t-card:not(.dragging)')];
+  const y=e.clientY;
+  let insertBefore=null;
+  for(const card of cards){
+    const rect=card.getBoundingClientRect();
+    if(y < rect.top + rect.height/2){insertBefore=card;break;}
+  }
+  /* Remove old indicators, place a new one */
+  container.querySelectorAll('.drop-indicator').forEach(d=>d.remove());
+  const indicator=document.createElement('div');
+  indicator.className='drop-indicator';
+  if(insertBefore)container.insertBefore(indicator,insertBefore);
+  else{
+    /* Insert before the composer slot / add-card-btn footer */
+    const composer=container.querySelector('[id^="cmp-"]');
+    const addBtn=container.querySelector('.add-card-btn');
+    const beforeMe=composer&&composer.style.display!=='none'?composer:addBtn;
+    if(beforeMe)container.insertBefore(indicator,beforeMe);
+    else container.appendChild(indicator);
+  }
+}
+function onDragLeave(e){
+  /* Only clear if we're truly leaving the container, not entering a child */
+  if(e.currentTarget.contains(e.relatedTarget))return;
+  e.currentTarget.classList.remove('drag-over');
+  e.currentTarget.querySelectorAll('.drop-indicator').forEach(d=>d.remove());
+}
+
+/* Permission check: who can reassign across people? CEO + Manager. */
+function canReassign(){
+  return ME.role==='ceo'||ME.role==='manager';
+}
+
+/* Compute new position value for a task being inserted into a column.
+   Returns a number: average of neighbours, or sensible bounds. */
+function computeNewPosition(orderedTasks,insertIndex){
+  /* orderedTasks: array of tasks already in destination column, sorted by position asc.
+     insertIndex: 0..orderedTasks.length, where the dragged card should land. */
+  const STEP=1024;
+  const before=insertIndex>0?orderedTasks[insertIndex-1]:null;
+  const after=insertIndex<orderedTasks.length?orderedTasks[insertIndex]:null;
+  const beforePos=before&&typeof before.position==='number'?before.position:null;
+  const afterPos=after&&typeof after.position==='number'?after.position:null;
+  if(beforePos==null&&afterPos==null)return STEP;          /* empty col */
+  if(beforePos==null)return afterPos-STEP;                 /* drop at top */
+  if(afterPos==null)return beforePos+STEP;                 /* drop at bottom */
+  return (beforePos+afterPos)/2;                           /* between two */
+}
+
 async function onDrop(e,ns,personId){
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
+  e.currentTarget.querySelectorAll('.drop-indicator').forEach(d=>d.remove());
   if(!dragId)return;
   const t=TASKS.find(x=>x.id===dragId);
-  if(!t||t.status===ns){dragId=null;return;}
+  if(!t){dragId=null;return;}
+
+  /* Determine drop index inside the destination column from mouse Y position */
+  const container=e.currentTarget;
+  const cards=[...container.querySelectorAll('.t-card:not(.dragging)')];
+  const y=e.clientY;
+  let insertIndex=cards.length;
+  for(let i=0;i<cards.length;i++){
+    const rect=cards[i].getBoundingClientRect();
+    if(y<rect.top+rect.height/2){insertIndex=i;break;}
+  }
+
+  /* Determine destination assignee. If dropping on a different swimlane,
+     this is a reassignment — only allowed for CEO/manager. */
+  const newAssignee=personId;
+  const isReassign=newAssignee!==t.assignee_id;
+  if(isReassign&&!canReassign()){
+    showToast('Only managers and CEO can reassign tasks','err');
+    dragId=null;return;
+  }
+
+  /* Build the destination column's task list (excluding the dragged one), sorted by position */
+  const destTasks=TASKS
+    .filter(x=>x.assignee_id===newAssignee&&x.status===ns&&x.id!==dragId)
+    .sort((a,b)=>{
+      const ap=typeof a.position==='number'?a.position:Number.POSITIVE_INFINITY;
+      const bp=typeof b.position==='number'?b.position:Number.POSITIVE_INFINITY;
+      if(ap!==bp)return ap-bp;
+      return new Date(b.created_at)-new Date(a.created_at);
+    });
+  const newPos=computeNewPosition(destTasks,insertIndex);
+
+  /* Skip update if absolutely nothing changed */
+  if(!isReassign && t.status===ns && t.position===newPos){dragId=null;return;}
+
   dragMoved=true;
-  TASKS=TASKS.map(x=>x.id===dragId?{...x,status:ns}:x);
+
+  /* Optimistic update */
+  TASKS=TASKS.map(x=>x.id===dragId?{...x,status:ns,assignee_id:newAssignee,position:newPos}:x);
   renderBoard();
-  const{error}=await sb.from('tasks').update({status:ns}).eq('id',dragId);
-  if(error){showToast('Error updating','err');await loadAll();renderBoard();}
-  else showToast('Moved to '+COLS.find(c=>c.key===ns).label,'ok');
+
+  /* Persist */
+  const payload={status:ns,assignee_id:newAssignee,position:newPos};
+  const{error}=await sb.from('tasks').update(payload).eq('id',dragId);
+  if(error){
+    showToast('Error: '+error.message,'err');
+    await loadAll();renderBoard();
+  }else{
+    if(isReassign){
+      const newPerson=PROFILES.find(p=>p.id===newAssignee);
+      const colLabel=COLS.find(c=>c.key===ns).label;
+      showToast('Moved to '+(newPerson?newPerson.full_name.split(' ')[0]:'?')+' — '+colLabel,'ok');
+    }else if(t.status!==ns){
+      showToast('Moved to '+COLS.find(c=>c.key===ns).label,'ok');
+    }else{
+      showToast('Reordered','ok');
+    }
+  }
   dragId=null;
 }
 
@@ -1129,7 +1313,7 @@ function openTaskModal(preA,preS){
   let asgn=ME.role==='ceo'?PROFILES:ME.role==='manager'?[ME,...PROFILES.filter(p=>p.manager_id===ME.id)]:[ME];
   const fv=document.getElementById('board-filter').value;
   const defA=preA||(fv!=='mine'&&fv!=='all'&&fv!=='team'?fv:ME.id);
-  document.getElementById('t-assignee').innerHTML='<option value="">Unassigned</option>'+asgn.map(p=>`<option value="${p.id}"${p.id===defA?' selected':''}>${p.full_name} (${p.role})</option>`).join('');
+  document.getElementById('t-assignee').innerHTML='<option value="">Unassigned</option>'+asgn.map(p=>`<option value="${esc(p.id)}"${p.id===defA?' selected':''}>${esc(p.full_name)} (${esc(p.role)})</option>`).join('');
   openModal('m-task');
 }
 async function saveTask(){
@@ -1164,12 +1348,13 @@ async function openDetail(taskId){
   const sc={todo:'#0079bf',in_progress:'#ff9f1a',done:'#61bd4f'};
   const sl={todo:'To Do',in_progress:'In Progress',done:'Done'};
   document.getElementById('d-meta').innerHTML=`
-    <div><div class="dl">Status</div>${canEdit?`<select class="btn btn-ghost btn-sm" style="width:100%" onchange="quickStatus('${t.id}',this.value)"><option value="todo"${t.status==='todo'?' selected':''}>To Do</option><option value="in_progress"${t.status==='in_progress'?' selected':''}>In Progress</option><option value="done"${t.status==='done'?' selected':''}>Done</option></select>`:`<div class="dv" style="color:${sc[t.status]}">${sl[t.status]}</div>`}</div>
-    <div><div class="dl">Priority</div><div class="pri pri-${t.priority}" style="display:inline-flex">${t.priority}</div></div>
-    <div><div class="dl">Assigned To</div><div class="dv">${ass?ass.full_name:'Unassigned'}</div></div>
-    <div><div class="dl">Due Date</div><div class="dv">${due}</div></div>
-    <div><div class="dl">Created By</div><div class="dv" style="color:var(--muted);font-size:13px">${cre?cre.full_name:'Unknown'}</div></div>`;
-  document.getElementById('d-desc').innerHTML=t.description?`<div>${t.description}</div>`:'';
+    <div><div class="dl">Status</div>${canEdit?`<select class="btn btn-ghost btn-sm" style="width:100%" onchange="quickStatus('${esc(t.id)}',this.value)"><option value="todo"${t.status==='todo'?' selected':''}>To Do</option><option value="in_progress"${t.status==='in_progress'?' selected':''}>In Progress</option><option value="done"${t.status==='done'?' selected':''}>Done</option></select>`:`<div class="dv" style="color:${sc[t.status]}">${sl[t.status]}</div>`}</div>
+    <div><div class="dl">Priority</div><div class="pri pri-${esc(t.priority)}" style="display:inline-flex">${esc(t.priority)}</div></div>
+    <div><div class="dl">Assigned To</div><div class="dv">${ass?esc(ass.full_name):'Unassigned'}</div></div>
+    <div><div class="dl">Due Date</div><div class="dv">${esc(due)}</div></div>
+    <div><div class="dl">Created By</div><div class="dv" style="color:var(--muted);font-size:13px">${cre?esc(cre.full_name):'Unknown'}</div></div>`;
+  /* SECURITY: description is user-supplied — escape, then preserve newlines via CSS white-space:pre-wrap */
+  document.getElementById('d-desc').innerHTML=t.description?`<div>${esc(t.description)}</div>`:'';
   const{i,c}=ga(ME.full_name);const ca=document.getElementById('c-ava');ca.textContent=i;ca.style.background=c;
   const{data:comments}=await sb.from('comments').select('*').eq('task_id',taskId).order('created_at');
   renderComments(comments||[]);
@@ -1182,7 +1367,8 @@ function renderComments(comments){
     const auth=PROFILES.find(p=>p.id===c.author_id);
     const{i,col}=auth?{i:ga(auth.full_name).i,col:ga(auth.full_name).c}:{i:'?',col:'#9ca3af'};
     const time=new Date(c.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    return `<div class="c-item"><div class="ava" style="background:${col};flex-shrink:0;width:32px;height:32px;font-size:11px">${i}</div><div class="c-body"><div class="c-meta"><span class="c-author">${auth?auth.full_name:'Unknown'}</span><span class="c-time">${time}</span></div><div class="c-text">${c.body}</div></div></div>`;
+    /* SECURITY: comment body and author name escaped */
+    return `<div class="c-item"><div class="ava" style="background:${col};flex-shrink:0;width:32px;height:32px;font-size:11px">${esc(i)}</div><div class="c-body"><div class="c-meta"><span class="c-author">${auth?esc(auth.full_name):'Unknown'}</span><span class="c-time">${esc(time)}</span></div><div class="c-text">${esc(c.body)}</div></div></div>`;
   }).join('');
   el.scrollTop=el.scrollHeight;
 }
@@ -1194,7 +1380,6 @@ async function addComment(){
   inp.value='';
   const{data:comments}=await sb.from('comments').select('*').eq('task_id',activeTaskId).order('created_at');
   renderComments(comments||[]);
-  // Bump local count so badge updates without full reload
   TASKS=TASKS.map(t=>t.id===activeTaskId?{...t,_comment_count:(t._comment_count||0)+1}:t);
   showToast('Comment posted','ok');
 }
@@ -1208,6 +1393,7 @@ async function quickStatus(taskId,status){
 function editFromDetail(){
   const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;
   closeModal('m-detail');
+  activeTaskId=t.id;
   document.getElementById('m-task-title').textContent='Edit Task';
   document.getElementById('t-title').value=t.title;
   document.getElementById('t-desc').value=t.description||'';
@@ -1215,7 +1401,7 @@ function editFromDetail(){
   document.getElementById('t-status').value=t.status;
   document.getElementById('t-due').value=t.due_date||'';
   let asgn=ME.role==='ceo'?PROFILES:[ME,...PROFILES.filter(p=>p.manager_id===ME.id)];
-  document.getElementById('t-assignee').innerHTML='<option value="">Unassigned</option>'+asgn.map(p=>`<option value="${p.id}"${p.id===t.assignee_id?' selected':''}>${p.full_name} (${p.role})</option>`).join('');
+  document.getElementById('t-assignee').innerHTML='<option value="">Unassigned</option>'+asgn.map(p=>`<option value="${esc(p.id)}"${p.id===t.assignee_id?' selected':''}>${esc(p.full_name)} (${esc(p.role)})</option>`).join('');
   openModal('m-task');
 }
 async function deleteTask(){
@@ -1230,7 +1416,7 @@ function renderOverview(){
   const inp=TASKS.filter(t=>t.status==='in_progress').length;
   const done=TASKS.filter(t=>t.status==='done').length;
   document.getElementById('stats').innerHTML=`<div class="stat" style="border-top-color:#0079bf"><div class="stat-label">To Do</div><div class="stat-val">${todo}</div><div class="stat-sub">waiting</div></div><div class="stat" style="border-top-color:#ff9f1a"><div class="stat-label">In Progress</div><div class="stat-val">${inp}</div><div class="stat-sub">active</div></div><div class="stat" style="border-top-color:#61bd4f"><div class="stat-label">Done</div><div class="stat-val">${done}</div><div class="stat-sub">completed</div></div>`;
-  document.getElementById('ov-person').innerHTML='<option value="">Everyone</option>'+PROFILES.map(p=>`<option value="${p.id}">${p.full_name}</option>`).join('');
+  document.getElementById('ov-person').innerHTML='<option value="">Everyone</option>'+PROFILES.map(p=>`<option value="${esc(p.id)}">${esc(p.full_name)}</option>`).join('');
   renderOvList();
 }
 function renderOvList(){
@@ -1247,7 +1433,8 @@ function renderOvList(){
     const ass=PROFILES.find(p=>p.id===t.assignee_id);
     const due=t.due_date?new Date(t.due_date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';
     const late=t.due_date&&new Date(t.due_date+'T00:00:00')<new Date()&&t.status!=='done';
-    return `<div class="ov-row" onclick="openDetail('${t.id}')"><div style="width:8px;height:8px;border-radius:50%;background:${sc[t.status]};flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${t.title}</div><div class="pri pri-${t.priority}">${t.priority}</div>${ass?`<div style="font-size:12px;color:var(--muted)">${ass.full_name}</div>`:''}${due?`<div class="t-due${late?' late':''}">${due}</div>`:''}<div style="font-size:12px;color:${sc[t.status]};font-weight:600;min-width:80px;text-align:right">${sl[t.status]}</div></div>`;
+    /* SECURITY: title and assignee name escaped */
+    return `<div class="ov-row" onclick="openDetail('${esc(t.id)}')"><div style="width:8px;height:8px;border-radius:50%;background:${sc[t.status]};flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${esc(t.title)}</div><div class="pri pri-${esc(t.priority)}">${esc(t.priority)}</div>${ass?`<div style="font-size:12px;color:var(--muted)">${esc(ass.full_name)}</div>`:''}${due?`<div class="t-due${late?' late':''}">${esc(due)}</div>`:''}<div style="font-size:12px;color:${sc[t.status]};font-weight:600;min-width:80px;text-align:right">${sl[t.status]}</div></div>`;
   }).join('');
 }
 
@@ -1263,14 +1450,15 @@ function renderPeople(){
     const mgr=PROFILES.find(m=>m.id===p.manager_id);
     const rc={ceo:'pr-ceo',manager:'pr-manager',member:'pr-member'}[p.role]||'pr-member';
     const open=TASKS.filter(t=>t.assignee_id===p.id&&t.status!=='done').length;
-    return `<div class="p-card"><div class="ava ava-md" style="background:${c}">${i}</div><div class="p-info"><div class="p-name">${p.full_name}</div><div class="p-email">${p.email}</div><div class="p-meta"><span class="p-role ${rc}">${p.role}</span>${mgr?`<span style="font-size:11px;color:var(--muted)">→ ${mgr.full_name}</span>`:''}<span style="font-size:11px;color:var(--muted)">${open} open</span></div></div><div class="p-actions">${isCeo?`<button class="btn btn-xs btn-ghost" onclick="openEditPerson('${p.id}')">Edit</button>`:''}<button class="btn btn-xs btn-acc" onclick="openTaskModal('${p.id}')">+ Task</button></div></div>`;
+    /* SECURITY: name, email, manager name escaped */
+    return `<div class="p-card"><div class="ava ava-md" style="background:${c}">${esc(i)}</div><div class="p-info"><div class="p-name">${esc(p.full_name)}</div><div class="p-email">${esc(p.email)}</div><div class="p-meta"><span class="p-role ${rc}">${esc(p.role)}</span>${mgr?`<span style="font-size:11px;color:var(--muted)">→ ${esc(mgr.full_name)}</span>`:''}<span style="font-size:11px;color:var(--muted)">${open} open</span></div></div><div class="p-actions">${isCeo?`<button class="btn btn-xs btn-ghost" onclick="openEditPerson('${esc(p.id)}')">Edit</button>`:''}<button class="btn btn-xs btn-acc" onclick="openTaskModal('${esc(p.id)}')">+ Task</button></div></div>`;
   }).join('');
 }
 
 function openPersonModal(){
   document.getElementById('p-name').value='';document.getElementById('p-email').value='';document.getElementById('p-pass').value='';document.getElementById('p-role').value='member';
   const mgrs=PROFILES.filter(p=>p.role==='manager'||p.role==='ceo');
-  document.getElementById('p-mgr').innerHTML='<option value="">No manager</option>'+mgrs.map(p=>`<option value="${p.id}">${p.full_name} (${p.role})</option>`).join('');
+  document.getElementById('p-mgr').innerHTML='<option value="">No manager</option>'+mgrs.map(p=>`<option value="${esc(p.id)}">${esc(p.full_name)} (${esc(p.role)})</option>`).join('');
   openModal('m-person');
 }
 async function savePerson(){
@@ -1306,7 +1494,7 @@ function openEditPerson(id){
   document.getElementById('ep-name').value=p.full_name;
   document.getElementById('ep-role').value=p.role;
   const others=PROFILES.filter(x=>x.id!==id&&(x.role==='manager'||x.role==='ceo'));
-  document.getElementById('ep-mgr').innerHTML='<option value="">None</option>'+others.map(x=>`<option value="${x.id}"${x.id===p.manager_id?' selected':''}>${x.full_name} (${x.role})</option>`).join('');
+  document.getElementById('ep-mgr').innerHTML='<option value="">None</option>'+others.map(x=>`<option value="${esc(x.id)}"${x.id===p.manager_id?' selected':''}>${esc(x.full_name)} (${esc(x.role)})</option>`).join('');
   openModal('m-edit-person');
 }
 async function updatePerson(){
@@ -1322,6 +1510,14 @@ async function updatePerson(){
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+
+/* Press Escape to close any open modal */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));
+  }
+});
+
 let toastT;
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3000);}
 </script>

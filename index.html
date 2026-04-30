@@ -592,6 +592,15 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .t-ass{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .t-ass .ava{width:24px;height:24px;font-size:9px;box-shadow:0 0 0 2px #fff}
 
+/* "updated Xh ago" subtle footer line on cards (Session 4) */
+.t-updated{
+  font-size:10px;
+  color:var(--muted-soft);
+  margin-top:6px;
+  text-align:right;
+  font-weight:500;
+}
+
 .t-due{
   font-size:11px;color:var(--muted);
   background:var(--line-soft);
@@ -615,9 +624,33 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .stat-sub{font-size:12px;color:var(--muted-soft);margin-top:3px}
 
 .ov-panel{background:#fff;border-radius:10px;box-shadow:0 1px 2px rgba(9,30,66,.08),0 0 0 1px rgba(9,30,66,.04)}
-.ov-panel-head{padding:14px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ov-panel-head{padding:14px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .ov-panel-head-title{font-size:14px;font-weight:700;color:var(--ink)}
 .ov-panel-body{padding:6px 20px 16px}
+
+/* Org Overview filter controls (Session 4) */
+.ov-search-input{
+  padding:6px 12px;
+  background:#f4f5f7;
+  border:1.5px solid #f4f5f7;
+  border-radius:6px;
+  font-family:inherit;font-size:12px;
+  color:var(--ink);
+  outline:none;
+  width:200px;
+  transition:border-color .14s,background .14s;
+}
+.ov-search-input:focus{border-color:var(--accent);background:#fff}
+.ov-search-input::placeholder{color:var(--muted-soft)}
+.ov-toggle{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:600;color:var(--ink-soft);
+  cursor:pointer;
+  padding:6px 10px;border-radius:6px;
+  background:rgba(9,30,66,.04);
+}
+.ov-toggle:hover{background:rgba(9,30,66,.08)}
+.ov-toggle input{cursor:pointer;accent-color:var(--accent)}
 
 .ov-row{
   display:flex;align-items:center;gap:12px;
@@ -840,10 +873,15 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
     <div class="stats" id="stats"></div>
     <div class="ov-panel">
       <div class="ov-panel-head">
-        <span class="ov-panel-head-title">All Tasks</span>
-        <div style="display:flex;gap:8px">
+        <span class="ov-panel-head-title">All Tasks <span id="ov-count" style="color:var(--muted-soft);font-weight:500"></span></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="search" id="ov-search" class="ov-search-input" placeholder="Search by title..." oninput="renderOvList()">
           <select id="ov-person" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderOvList()"><option value="">Everyone</option></select>
           <select id="ov-status" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderOvList()"><option value="">All Status</option><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="done">Done</option></select>
+          <select id="ov-priority" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderOvList()"><option value="">Any Priority</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+          <select id="ov-label" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderOvList()"><option value="">Any Label</option></select>
+          <label class="ov-toggle"><input type="checkbox" id="ov-overdue" onchange="renderOvList()"> Overdue only</label>
+          <button id="ov-clear" class="btn btn-ghost btn-xs" onclick="clearOvFilters()" style="display:none">Clear</button>
         </div>
       </div>
       <div class="ov-panel-body" id="ov-list"></div>
@@ -981,6 +1019,31 @@ const LABELS=[
   {key:'blue',   name:'Feature',   color:'#0079bf'}
 ];
 function labelByKey(k){return LABELS.find(l=>l.key===k);}
+
+/* ============================================================
+   TIME helpers (Session 4)
+   ============================================================ */
+function relativeTime(iso){
+  if(!iso)return '';
+  const d=new Date(iso);
+  if(isNaN(d))return '';
+  const sec=Math.round((Date.now()-d.getTime())/1000);
+  if(sec<60)return 'just now';
+  const min=Math.round(sec/60);
+  if(min<60)return min+'m ago';
+  const hr=Math.round(min/60);
+  if(hr<24)return hr+'h ago';
+  const day=Math.round(hr/24);
+  if(day<7)return day+'d ago';
+  if(day<30)return Math.round(day/7)+'w ago';
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+function fullTime(iso){
+  if(!iso)return '';
+  const d=new Date(iso);
+  if(isNaN(d))return '';
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
 
 /* ============================================================
    SECURITY — XSS escape helper (NEW — Session 1)
@@ -1234,6 +1297,14 @@ function tCardHTML(t,showA){
         <div class="pri pri-${esc(t.priority)}">${esc(t.priority)}</div>
         ${ass?`<div class="t-ass" title="${esc(ass.full_name)}"><div class="ava" style="background:${c}">${esc(i)}</div></div>`:'<div></div>'}
       </div>
+      ${(()=>{
+        /* Show "updated Xh ago" only if updated within last 7 days, else nothing */
+        const ts=t.updated_at||t.created_at;
+        if(!ts)return '';
+        const ageMs=Date.now()-new Date(ts).getTime();
+        if(isNaN(ageMs)||ageMs>7*24*3600*1000)return '';
+        return `<div class="t-updated" title="${esc(fullTime(ts))}">${esc(relativeTime(ts))}</div>`;
+      })()}
     </div>
   </div>`;
 }
@@ -1447,7 +1518,7 @@ async function onDrop(e,ns,personId){
   dragMoved=true;
 
   /* Optimistic update */
-  TASKS=TASKS.map(x=>x.id===dragId?{...x,status:ns,assignee_id:newAssignee,position:newPos}:x);
+  TASKS=TASKS.map(x=>x.id===dragId?{...x,status:ns,assignee_id:newAssignee,position:newPos,updated_at:new Date().toISOString()}:x);
   renderBoard();
 
   /* Persist */
@@ -1520,7 +1591,8 @@ async function openDetail(taskId){
     <div><div class="dl">Priority</div><div class="pri pri-${esc(t.priority)}" style="display:inline-flex">${esc(t.priority)}</div></div>
     <div><div class="dl">Assigned To</div><div class="dv">${ass?esc(ass.full_name):'Unassigned'}</div></div>
     <div><div class="dl">Due Date</div><div class="dv">${esc(due)}</div></div>
-    <div><div class="dl">Created By</div><div class="dv" style="color:var(--muted);font-size:13px">${cre?esc(cre.full_name):'Unknown'}</div></div>`;
+    <div><div class="dl">Created By</div><div class="dv" style="color:var(--muted);font-size:13px">${cre?esc(cre.full_name):'Unknown'}<div style="font-weight:400;font-size:11px;color:var(--muted-soft);margin-top:2px" title="${esc(fullTime(t.created_at))}">${esc(relativeTime(t.created_at))}</div></div></div>
+    ${t.updated_at&&t.updated_at!==t.created_at?`<div><div class="dl">Last Updated</div><div class="dv" style="color:var(--muted);font-size:13px;font-weight:500" title="${esc(fullTime(t.updated_at))}">${esc(relativeTime(t.updated_at))}</div></div>`:''}`;
   /* SECURITY: description is user-supplied — escape, then preserve newlines via CSS white-space:pre-wrap */
   document.getElementById('d-desc').innerHTML=t.description?`<div>${esc(t.description)}</div>`:'';
 
@@ -1586,7 +1658,7 @@ async function toggleLabel(labelKey){
   if(idx>=0)cur.splice(idx,1);else cur.push(labelKey);
 
   /* Optimistic local update */
-  TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,labels:cur}:x);
+  TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,labels:cur,updated_at:new Date().toISOString()}:x);
   renderLabelsForTask({...t,labels:cur},canEdit);
 
   const{error}=await sb.from('tasks').update({labels:cur}).eq('id',activeTaskId);
@@ -1661,7 +1733,7 @@ function renderChecklistForTask(t){
 async function persistChecklist(newItems){
   if(!activeTaskId)return false;
   /* Optimistic */
-  TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,checklist:newItems}:x);
+  TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,checklist:newItems,updated_at:new Date().toISOString()}:x);
   renderChecklistForTask(TASKS.find(x=>x.id===activeTaskId));
   const{error}=await sb.from('tasks').update({checklist:newItems}).eq('id',activeTaskId);
   if(error){
@@ -1741,7 +1813,7 @@ async function addComment(){
 document.getElementById('cinput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addComment();}});
 
 async function quickStatus(taskId,status){
-  TASKS=TASKS.map(t=>t.id===taskId?{...t,status}:t);
+  TASKS=TASKS.map(t=>t.id===taskId?{...t,status,updated_at:new Date().toISOString()}:t);
   await sb.from('tasks').update({status}).eq('id',taskId);
   showToast('Status updated','ok');renderBoard();
 }
@@ -1772,24 +1844,70 @@ function renderOverview(){
   const done=TASKS.filter(t=>t.status==='done').length;
   document.getElementById('stats').innerHTML=`<div class="stat" style="border-top-color:#0079bf"><div class="stat-label">To Do</div><div class="stat-val">${todo}</div><div class="stat-sub">waiting</div></div><div class="stat" style="border-top-color:#ff9f1a"><div class="stat-label">In Progress</div><div class="stat-val">${inp}</div><div class="stat-sub">active</div></div><div class="stat" style="border-top-color:#61bd4f"><div class="stat-label">Done</div><div class="stat-val">${done}</div><div class="stat-sub">completed</div></div>`;
   document.getElementById('ov-person').innerHTML='<option value="">Everyone</option>'+PROFILES.map(p=>`<option value="${esc(p.id)}">${esc(p.full_name)}</option>`).join('');
+  /* Populate label filter dropdown */
+  document.getElementById('ov-label').innerHTML='<option value="">Any Label</option>'+LABELS.map(L=>`<option value="${esc(L.key)}">${esc(L.name)}</option>`).join('');
   renderOvList();
 }
+
+function clearOvFilters(){
+  document.getElementById('ov-search').value='';
+  document.getElementById('ov-person').value='';
+  document.getElementById('ov-status').value='';
+  document.getElementById('ov-priority').value='';
+  document.getElementById('ov-label').value='';
+  document.getElementById('ov-overdue').checked=false;
+  renderOvList();
+}
+
 function renderOvList(){
+  const q=(document.getElementById('ov-search').value||'').trim().toLowerCase();
   const pf=document.getElementById('ov-person').value;
   const sf=document.getElementById('ov-status').value;
+  const prf=document.getElementById('ov-priority').value;
+  const lf=document.getElementById('ov-label').value;
+  const overdueOnly=document.getElementById('ov-overdue').checked;
+
+  /* Show "Clear" if any filter is active */
+  const anyActive=q||pf||sf||prf||lf||overdueOnly;
+  document.getElementById('ov-clear').style.display=anyActive?'':'none';
+
   let tasks=[...TASKS];
+  if(q)tasks=tasks.filter(t=>(t.title||'').toLowerCase().includes(q));
   if(pf)tasks=tasks.filter(t=>t.assignee_id===pf);
   if(sf)tasks=tasks.filter(t=>t.status===sf);
+  if(prf)tasks=tasks.filter(t=>t.priority===prf);
+  if(lf)tasks=tasks.filter(t=>Array.isArray(t.labels)&&t.labels.includes(lf));
+  if(overdueOnly){
+    const today=new Date();today.setHours(0,0,0,0);
+    tasks=tasks.filter(t=>t.due_date&&new Date(t.due_date+'T00:00:00')<today&&t.status!=='done');
+  }
+
+  /* Update result count badge */
+  const countEl=document.getElementById('ov-count');
+  countEl.textContent=anyActive?`(${tasks.length} of ${TASKS.length})`:`(${TASKS.length})`;
+
   const el=document.getElementById('ov-list');
-  if(!tasks.length){el.innerHTML='<div class="empty"><h3>No tasks</h3><p>Adjust filters or add a task</p></div>';return;}
+  if(!tasks.length){el.innerHTML='<div class="empty"><h3>No tasks match</h3><p>Try clearing some filters</p></div>';return;}
   const sc={todo:'#0079bf',in_progress:'#ff9f1a',done:'#61bd4f'};
   const sl={todo:'To Do',in_progress:'In Progress',done:'Done'};
   el.innerHTML=tasks.map(t=>{
     const ass=PROFILES.find(p=>p.id===t.assignee_id);
     const due=t.due_date?new Date(t.due_date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';
     const late=t.due_date&&new Date(t.due_date+'T00:00:00')<new Date()&&t.status!=='done';
+    /* Show first up-to-3 label dots inline */
+    const labelDots=Array.isArray(t.labels)&&t.labels.length?
+      `<div style="display:flex;gap:3px;flex-shrink:0">${t.labels.slice(0,3).map(k=>{const L=labelByKey(k);return L?`<div title="${esc(L.name)}" style="width:8px;height:14px;border-radius:3px;background:${L.color}"></div>`:'';}).join('')}</div>`:'';
     /* SECURITY: title and assignee name escaped */
-    return `<div class="ov-row" onclick="openDetail('${esc(t.id)}')"><div style="width:8px;height:8px;border-radius:50%;background:${sc[t.status]};flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600;color:var(--ink)">${esc(t.title)}</div><div class="pri pri-${esc(t.priority)}">${esc(t.priority)}</div>${ass?`<div style="font-size:12px;color:var(--muted)">${esc(ass.full_name)}</div>`:''}${due?`<div class="t-due${late?' late':''}">${esc(due)}</div>`:''}<div style="font-size:12px;color:${sc[t.status]};font-weight:600;min-width:80px;text-align:right">${sl[t.status]}</div></div>`;
+    return `<div class="ov-row" onclick="openDetail('${esc(t.id)}')">
+      <div style="width:8px;height:8px;border-radius:50%;background:${sc[t.status]};flex-shrink:0"></div>
+      ${labelDots}
+      <div style="flex:1;font-size:13px;font-weight:600;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div>
+      <div class="pri pri-${esc(t.priority)}">${esc(t.priority)}</div>
+      ${ass?`<div style="font-size:12px;color:var(--muted);min-width:90px;text-align:right">${esc(ass.full_name)}</div>`:'<div style="min-width:90px"></div>'}
+      ${due?`<div class="t-due${late?' late':''}">${esc(due)}</div>`:'<div style="min-width:60px"></div>'}
+      <div style="font-size:11px;color:var(--muted-soft);min-width:80px;text-align:right" title="${esc(fullTime(t.updated_at||t.created_at))}">${esc(relativeTime(t.updated_at||t.created_at))}</div>
+      <div style="font-size:12px;color:${sc[t.status]};font-weight:600;min-width:80px;text-align:right">${sl[t.status]}</div>
+    </div>`;
   }).join('');
 }
 

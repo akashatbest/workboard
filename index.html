@@ -1222,27 +1222,63 @@ function esc(s){
 
 function ga(name){const i=(name||'?').split(' ').map(n=>n[0]||'').join('').toUpperCase().slice(0,2);return{i,c:AVC[i.charCodeAt(0)%AVC.length]};}
 
+/* ============================================================
+   AUTH state handling
+   ============================================================
+   Supabase fires onAuthStateChange for many events, not just login/logout:
+   - INITIAL_SESSION  → fired once on page load
+   - SIGNED_IN        → user just logged in
+   - SIGNED_OUT       → user just logged out
+   - TOKEN_REFRESHED  → access token refreshed (every ~hour, AND on tab focus)
+   - USER_UPDATED     → user metadata changed
+   We only want to (re)boot the app on the events that mean "auth state actually
+   changed". Otherwise tab-focus / token refresh would re-run boot() and could
+   bounce the user back to login if any background fetch glitched.
+   ============================================================ */
+let APP_BOOTED=false;
+let SUPPRESS_AUTH_EVENTS=false;  /* Set true during admin signup flow */
+
 sb.auth.onAuthStateChange(async(ev,sess)=>{
-  if(sess){await boot(sess.user);}else{showAuth();}
+  /* During savePerson we briefly create a new auth session and then restore
+     the original CEO session. Don't react to those intermediate events. */
+  if(SUPPRESS_AUTH_EVENTS)return;
+
+  if(ev==='SIGNED_OUT'||(!sess&&APP_BOOTED)){
+    APP_BOOTED=false;
+    ME=null;
+    showAuth();
+    return;
+  }
+  /* Only boot once per session. Token refreshes and re-focus events keep the
+     same session and should not re-run boot. */
+  if(sess&&!APP_BOOTED){
+    APP_BOOTED=true;
+    await boot(sess.user);
+  }
 });
 
 async function boot(user){
   try{
-    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),8000));
-    const result=await Promise.race([
-      sb.from('profiles').select('*').eq('id',user.id).single(),
-      timeout
-    ]);
-    const{data:p,error}=result;
-    if(error||!p){showToast('Profile not found: '+( error?.message||'unknown'),'err');showAuth();return;}
+    /* Fetch the current user's profile. No artificial timeout — let network
+       errors surface naturally. Supabase has its own internal retries. */
+    const{data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
+    if(error||!p){
+      showToast('Profile not found: '+(error?.message||'unknown'),'err');
+      APP_BOOTED=false;
+      showAuth();
+      return;
+    }
     ME=p;
-    await Promise.race([loadAll(),new Promise(r=>setTimeout(r,5000))]);
+    /* Load tasks/profiles/etc. If this fails, we still want to show the app —
+       loadAll() catches its own errors internally per table. */
+    await loadAll();
     buildTopbar();
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app').style.display='block';
     gotoDefault();
   }catch(e){
     showToast('Login error: '+e.message,'err');
+    APP_BOOTED=false;
     showAuth();
   }
 }
@@ -1337,19 +1373,22 @@ async function doLogin(){
   err.style.display='none';
   if(!email||!pass){err.textContent='Enter email and password';err.style.display='block';return;}
   btn.disabled=true;btn.textContent='Signing in...';
-  
-  const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Connection timeout. Please try again.')),10000));
-  
+
+  /* No artificial timeout — Supabase has its own. The previous version raced
+     a 10-second timer against the actual sign-in, which caused false errors
+     to display even when the login eventually succeeded. */
   try{
-    const result=await Promise.race([
-      sb.auth.signInWithPassword({email,password:pass}),
-      timeout
-    ]);
-    if(result.error){
-      err.textContent=result.error.message;err.style.display='block';
+    const{error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error){
+      err.textContent=error.message;
+      err.style.display='block';
     }
+    /* On success, do NOT manually transition the UI here. The
+       onAuthStateChange handler with SIGNED_IN will run boot() exactly once
+       and switch to the app. */
   }catch(e){
-    err.textContent=e.message;err.style.display='block';
+    err.textContent=e.message||'Could not sign in. Please try again.';
+    err.style.display='block';
   }finally{
     btn.disabled=false;btn.textContent='Sign In';
   }
@@ -2561,21 +2600,27 @@ async function savePerson(){
   const savedAccess=cur?.access_token;
   const savedRefresh=cur?.refresh_token;
   const savedMe=ME;
-  const{data:su,error:se}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
-  if(se){
-    if(savedAccess&&savedRefresh)await sb.auth.setSession({access_token:savedAccess,refresh_token:savedRefresh});
-    showToast('Error: '+se.message,'err');return;
+  /* Suppress auth events while we briefly switch sessions to create the new user */
+  SUPPRESS_AUTH_EVENTS=true;
+  try{
+    const{data:su,error:se}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+    if(se){
+      if(savedAccess&&savedRefresh)await sb.auth.setSession({access_token:savedAccess,refresh_token:savedRefresh});
+      showToast('Error: '+se.message,'err');return;
+    }
+    const uid=su.user?.id;
+    if(savedAccess&&savedRefresh){
+      await sb.auth.setSession({access_token:savedAccess,refresh_token:savedRefresh});
+      ME=savedMe;
+    }
+    if(uid)await sb.from('profiles').upsert({id:uid,full_name:name,email,role,manager_id:mgr||null});
+    closeModal('m-person');
+    showToast(name+' added!','ok');
+    await loadAll();
+    renderPeople();
+  }finally{
+    SUPPRESS_AUTH_EVENTS=false;
   }
-  const uid=su.user?.id;
-  if(savedAccess&&savedRefresh){
-    await sb.auth.setSession({access_token:savedAccess,refresh_token:savedRefresh});
-    ME=savedMe;
-  }
-  if(uid)await sb.from('profiles').upsert({id:uid,full_name:name,email,role,manager_id:mgr||null});
-  closeModal('m-person');
-  showToast(name+' added!','ok');
-  await loadAll();
-  renderPeople();
 }  
 function openEditPerson(id){
   editingPersonId=id;const p=PROFILES.find(x=>x.id===id);if(!p)return;

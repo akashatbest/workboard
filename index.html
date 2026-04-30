@@ -629,13 +629,25 @@ async function savePerson(){
   if(!name||!email||!pass){showToast('Fill all fields','err');return;}
   if(pass.length<6){showToast('Password must be 6+ characters','err');return;}
   const{data:{session:cur}}=await sb.auth.getSession();
+  const savedAccess=cur?.access_token;
+  const savedRefresh=cur?.refresh_token;
+  const savedMe=ME;
   const{data:su,error:se}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
-  if(se){showToast('Error: '+se.message,'err');return;}
+  if(se){
+    if(savedAccess&&savedRefresh)await sb.auth.setSession({access_token:savedAccess,refresh_token:savedRefresh});
+    showToast('Error: '+se.message,'err');return;
+  }
   const uid=su.user?.id;
+  if(savedAccess&&savedRefresh){
+    await sb.auth.setSession({access_token:savedAccess,refresh_token:savedRefresh});
+    ME=savedMe;
+  }
   if(uid)await sb.from('profiles').upsert({id:uid,full_name:name,email,role,manager_id:mgr||null});
-  if(cur)await sb.auth.setSession({access_token:cur.access_token,refresh_token:cur.refresh_token});
-  closeModal('m-person');showToast(name+' added!','ok');await loadAll();renderPeople();
-}
+  closeModal('m-person');
+  showToast(name+' added!','ok');
+  await loadAll();
+  renderPeople();
+}  
 function openEditPerson(id){
   editingPersonId=id;const p=PROFILES.find(x=>x.id===id);if(!p)return;
   document.getElementById('ep-name').value=p.full_name;

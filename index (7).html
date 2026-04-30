@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkBoard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f4f5f7;color:#1a1a2e;min-height:100vh;font-size:14px}
+/* AUTH */
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f5f7}
+#app{display:none}
+.auth-box{background:#fff;border:1px solid #e2e4e8;border-radius:16px;padding:40px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,0.08)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.brand-icon{width:36px;height:36px;background:#ff6b35;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff}
+.brand-name{font-size:20px;font-weight:800;color:#1a1a2e}
+h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.sub{color:#6b7280;font-size:13px;margin-bottom:24px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:6px}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 13px;background:#fff;border:1.5px solid #e2e4e8;border-radius:8px;font-family:system-ui,sans-serif;font-size:14px;color:#1a1a2e;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:#ff6b35}
+.fg textarea{resize:vertical;min-height:70px;line-height:1.5}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;border:none;font-family:system-ui,sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-acc{background:#ff6b35;color:#fff}.btn-acc:hover{background:#e85d26}.btn-acc:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:#f4f5f7;color:#6b7280;border:1.5px solid #e2e4e8}.btn-ghost:hover{background:#e9eaec;color:#1a1a2e}
+.btn-red{background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca}.btn-red:hover{background:#fee2e2}
+.btn-full{width:100%;padding:12px;font-size:15px}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:7px}
+.btn-xs{padding:4px 9px;font-size:11px;border-radius:6px}
+.auth-err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;display:none}
+/* TOPBAR */
+.topbar{background:#1a1a2e;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.tb-left{display:flex;align-items:center;gap:16px}
+.tb-brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;color:#fff}
+.tb-icon{width:28px;height:28px;background:#ff6b35;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff}
+.tb-nav{display:flex;gap:2px}
+.nav-btn{padding:5px 12px;border-radius:6px;font-size:13px;font-weight:600;color:rgba(255,255,255,.5);cursor:pointer;border:none;background:transparent;font-family:system-ui,sans-serif;transition:all .14s}
+.nav-btn:hover{color:#fff;background:rgba(255,255,255,.1)}.nav-btn.active{color:#fff;background:rgba(255,255,255,.15)}
+.tb-right{display:flex;align-items:center;gap:10px}
+.user-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:20px;padding:4px 12px 4px 4px}
+.ava{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.ava-md{width:34px;height:34px;border-radius:8px;font-size:13px}
+.uname{font-size:13px;font-weight:600;color:#fff}
+.role-tag{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:6px}
+.rt-ceo{background:rgba(255,107,53,.25);color:#ffb499}.rt-manager{background:rgba(52,201,122,.2);color:#86efac}.rt-member{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
+.signout-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:system-ui,sans-serif}
+.signout-btn:hover{color:#fff;background:rgba(255,255,255,.15)}
+/* PAGES */
+.page{display:none;padding:24px 28px}.page.active{display:block}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
+.page-title{font-size:20px;font-weight:800}.page-sub{color:#6b7280;font-size:13px;margin-top:3px}
+/* KANBAN */
+.kanban-wrap{display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:20px;min-height:calc(100vh - 170px)}
+.k-col{background:#fff;border:1.5px solid #e2e4e8;border-radius:12px;width:300px;min-width:300px;display:flex;flex-direction:column;max-height:calc(100vh - 170px)}
+.k-head{padding:13px 16px;border-bottom:1.5px solid #e2e4e8;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.k-title-row{display:flex;align-items:center;gap:8px}
+.k-dot{width:8px;height:8px;border-radius:50%}
+.k-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280}
+.k-count{background:#f4f5f7;border:1.5px solid #e2e4e8;border-radius:8px;padding:1px 7px;font-size:11px;font-weight:700;color:#9ca3af}
+.k-add{width:26px;height:26px;border-radius:6px;background:transparent;border:1.5px solid #e2e4e8;color:#9ca3af;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .14s;line-height:1}
+.k-add:hover{background:#ff6b35;border-color:#ff6b35;color:#fff}
+.k-cards{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;min-height:100px;transition:background .15s;border-radius:0 0 10px 10px}
+.k-cards.drag-over{background:#fff7f5}
+/* TASK CARD */
+.t-card{background:#fff;border:1.5px solid #e2e4e8;border-radius:10px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s;user-select:none;position:relative}
+.t-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.1);border-color:#d1d5db;transform:translateY(-1px)}
+.t-card.dragging{opacity:.4;cursor:grabbing;transform:scale(.97)}
+.t-card.is-dragging{cursor:grabbing}
+.t-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.pri{font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 7px;border-radius:5px;letter-spacing:.04em}
+.pri-high{background:#fef2f2;color:#dc2626}.pri-medium{background:#fefce8;color:#ca8a04}.pri-low{background:#f0fdf4;color:#16a34a}
+.t-title-text{font-size:13px;font-weight:600;line-height:1.45;color:#1a1a2e;margin-bottom:10px}
+.t-footer{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.t-ass{display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280}
+.t-due{font-size:10px;color:#9ca3af;background:#f4f5f7;padding:2px 7px;border-radius:5px;white-space:nowrap}
+.t-due.late{background:#fef2f2;color:#dc2626}
+.drag-handle{position:absolute;top:8px;right:8px;color:#d1d5db;font-size:14px;cursor:grab;padding:2px 4px;border-radius:4px}
+.drag-handle:hover{color:#9ca3af;background:#f4f5f7}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.stat{background:#fff;border:1.5px solid #e2e4e8;border-radius:12px;padding:18px 20px;border-top-width:3px}
+.stat-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:8px}
+.stat-val{font-size:28px;font-weight:800;color:#1a1a2e}
+.stat-sub{font-size:12px;color:#9ca3af;margin-top:3px}
+/* PEOPLE */
+.ppl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.p-card{background:#fff;border:1.5px solid #e2e4e8;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:13px;transition:border-color .15s,box-shadow .15s}
+.p-card:hover{border-color:#d1d5db;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.p-info{flex:1;min-width:0}
+.p-name{font-size:14px;font-weight:700}
+.p-email{font-size:12px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-meta{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
+.p-role{font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:6px}
+.pr-ceo{background:#fff7ed;color:#ea580c}.pr-manager{background:#f0fdf4;color:#16a34a}.pr-member{background:#f4f5f7;color:#6b7280}
+.p-actions{display:flex;gap:6px;flex-shrink:0}
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:#fff;border:1.5px solid #e2e4e8;border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.15);animation:mIn .18s ease}
+.modal-wide{max-width:600px}
+@keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.m-head{padding:18px 20px 14px;border-bottom:1.5px solid #e2e4e8;display:flex;align-items:center;justify-content:space-between}
+.m-title{font-size:16px;font-weight:700}
+.m-close{width:28px;height:28px;border-radius:6px;background:#f4f5f7;border:1.5px solid #e2e4e8;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b7280;transition:all .13s}
+.m-close:hover{background:#e9eaec;color:#1a1a2e}
+.m-body{padding:18px 20px}
+.m-foot{padding:12px 20px;border-top:1.5px solid #e2e4e8;display:flex;gap:8px;justify-content:flex-end}
+/* DETAIL */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.dl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:5px}
+.dv{font-size:14px;font-weight:600}
+/* COMMENTS */
+.comments-wrap{border-top:1.5px solid #e2e4e8;margin-top:16px;padding-top:16px}
+.c-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:12px}
+.c-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;max-height:200px;overflow-y:auto}
+.c-item{display:flex;gap:10px}
+.c-body{flex:1;background:#f4f5f7;border-radius:8px;padding:10px 12px}
+.c-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.c-author{font-size:12px;font-weight:700}
+.c-time{font-size:11px;color:#9ca3af}
+.c-text{font-size:13px;color:#374151;line-height:1.5}
+.c-input-row{display:flex;gap:8px;align-items:flex-end}
+.cinput{flex:1;padding:9px 12px;background:#f4f5f7;border:1.5px solid #e2e4e8;border-radius:8px;font-family:system-ui,sans-serif;font-size:13px;color:#1a1a2e;outline:none;resize:none;min-height:40px;max-height:100px}
+.cinput:focus{border-color:#ff6b35;background:#fff}
+/* OVERVIEW LIST */
+.ov-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1.5px solid #f4f5f7;cursor:pointer;transition:opacity .14s}
+.ov-row:last-child{border-bottom:none}
+.ov-row:hover{opacity:.75}
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:#9ca3af}
+.empty h3{font-size:15px;font-weight:700;color:#6b7280;margin-bottom:4px}
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:#1a1a2e;color:#fff;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .25s ease}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:#16a34a}.toast.err{background:#dc2626}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:#e2e4e8;border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="brand"><div class="brand-icon">W</div><span class="brand-name">WorkBoard</span></div>
+    <h2>Welcome back</h2>
+    <p class="sub">Sign in to your workspace</p>
+    <div class="fg"><label>Email</label><input type="email" id="inp-email" placeholder="you@apporio.com"></div>
+    <div class="fg"><label>Password</label><input type="password" id="inp-pass" placeholder="••••••••"></div>
+    <button class="btn btn-acc btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-brand"><div class="tb-icon">W</div>WorkBoard</div>
+      <nav class="tb-nav" id="tb-nav"></nav>
+    </div>
+    <div class="tb-right">
+      <div class="user-chip"><div class="ava" id="top-ava"></div><span class="uname" id="top-name"></span><span class="role-tag" id="top-role"></span></div>
+      <button class="signout-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="page" id="pg-board">
+    <div class="page-head">
+      <div><div class="page-title" id="board-title">My Board</div><div class="page-sub" id="board-sub">Your personal task board</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="board-filter" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderBoard()"><option value="mine">My Tasks</option></select>
+        <button class="btn btn-acc btn-sm" onclick="openTaskModal()">+ Add Task</button>
+      </div>
+    </div>
+    <div class="kanban-wrap" id="kanban-wrap"></div>
+  </div>
+
+  <div class="page" id="pg-overview">
+    <div class="page-head">
+      <div><div class="page-title">Org Overview</div><div class="page-sub">All tasks across the organisation</div></div>
+      <button class="btn btn-acc btn-sm" onclick="openTaskModal()">+ New Task</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div style="background:#fff;border:1.5px solid #e2e4e8;border-radius:12px">
+      <div style="padding:13px 18px;border-bottom:1.5px solid #e2e4e8;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700">All Tasks</span>
+        <div style="display:flex;gap:8px">
+          <select id="ov-person" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderOvList()"><option value="">Everyone</option></select>
+          <select id="ov-status" class="btn btn-ghost btn-sm" style="cursor:pointer" onchange="renderOvList()"><option value="">All Status</option><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="done">Done</option></select>
+        </div>
+      </div>
+      <div style="padding:14px 18px" id="ov-list"></div>
+    </div>
+  </div>
+
+  <div class="page" id="pg-people">
+    <div class="page-head">
+      <div><div class="page-title">People</div><div class="page-sub" id="ppl-sub"></div></div>
+      <button class="btn btn-acc btn-sm" id="add-ppl-btn" onclick="openPersonModal()" style="display:none">+ Add Person</button>
+    </div>
+    <div class="ppl-grid" id="ppl-grid"></div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="overlay" id="m-task">
+  <div class="modal">
+    <div class="m-head"><div class="m-title" id="m-task-title">New Task</div><button class="m-close" onclick="closeModal('m-task')">&#x2715;</button></div>
+    <div class="m-body">
+      <div class="fg"><label>Title</label><input type="text" id="t-title" placeholder="What needs to be done?"></div>
+      <div class="fg"><label>Description</label><textarea id="t-desc" placeholder="Add details..."></textarea></div>
+      <div class="form-row">
+        <div class="fg"><label>Assign To</label><select id="t-assignee"></select></div>
+        <div class="fg"><label>Priority</label><select id="t-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Status</label><select id="t-status"><option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="done">Done</option></select></div>
+        <div class="fg"><label>Due Date</label><input type="date" id="t-due"></div>
+      </div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost btn-sm" onclick="closeModal('m-task')">Cancel</button><button class="btn btn-acc btn-sm" onclick="saveTask()">Save Task</button></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="overlay" id="m-detail">
+  <div class="modal modal-wide">
+    <div class="m-head">
+      <div class="m-title" id="d-title" style="max-width:78%"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-sm btn-ghost" id="d-edit-btn" onclick="editFromDetail()">Edit</button>
+        <button class="btn btn-sm btn-red" id="d-del-btn" onclick="deleteTask()">Delete</button>
+        <button class="m-close" onclick="closeModal('m-detail')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="m-body">
+      <div class="detail-grid" id="d-meta"></div>
+      <div id="d-desc"></div>
+      <div class="comments-wrap">
+        <div class="c-title">Comments</div>
+        <div class="c-list" id="c-list"></div>
+        <div class="c-input-row">
+          <div class="ava" id="c-ava" style="flex-shrink:0;margin-bottom:2px"></div>
+          <textarea class="cinput" id="cinput" placeholder="Add a comment... (Enter to post)" rows="1"></textarea>
+          <button class="btn btn-acc btn-sm" onclick="addComment()" style="flex-shrink:0">Post</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Person -->
+<div class="overlay" id="m-person">
+  <div class="modal">
+    <div class="m-head"><div class="m-title">Add Person</div><button class="m-close" onclick="closeModal('m-person')">&#x2715;</button></div>
+    <div class="m-body">
+      <div class="fg"><label>Full Name</label><input type="text" id="p-name" placeholder="Rahul Sharma"></div>
+      <div class="fg"><label>Email</label><input type="email" id="p-email" placeholder="rahul@apporio.com"></div>
+      <div class="fg"><label>Password</label><input type="password" id="p-pass" placeholder="Min 6 characters"></div>
+      <div class="form-row">
+        <div class="fg"><label>Role</label><select id="p-role"><option value="member">Member</option><option value="manager">Manager</option></select></div>
+        <div class="fg"><label>Reports To</label><select id="p-mgr"><option value="">No manager</option></select></div>
+      </div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost btn-sm" onclick="closeModal('m-person')">Cancel</button><button class="btn btn-acc btn-sm" onclick="savePerson()">Create Account</button></div>
+  </div>
+</div>
+
+<!-- Edit Person -->
+<div class="overlay" id="m-edit-person">
+  <div class="modal">
+    <div class="m-head"><div class="m-title">Edit Person</div><button class="m-close" onclick="closeModal('m-edit-person')">&#x2715;</button></div>
+    <div class="m-body">
+      <div class="fg"><label>Full Name</label><input type="text" id="ep-name"></div>
+      <div class="form-row">
+        <div class="fg"><label>Role</label><select id="ep-role"><option value="member">Member</option><option value="manager">Manager</option><option value="ceo">CEO</option></select></div>
+        <div class="fg"><label>Reports To</label><select id="ep-mgr"><option value="">None</option></select></div>
+      </div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost btn-sm" onclick="closeModal('m-edit-person')">Cancel</button><button class="btn btn-acc btn-sm" onclick="updatePerson()">Save Changes</button></div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://uvrypfufkivylnrnxegi.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2cnlwZnVma2l2eWxucm54ZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNzgxMDcsImV4cCI6MjA5Mjk1NDEwN30.y6PQm35mgNx8xXY-hd_pQ3oR8maQeAmiPqfAziyFaCo';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+let ME=null,PROFILES=[],TASKS=[],activeTaskId=null,editingPersonId=null,dragId=null,dragMoved=false;
+const COLS=[{key:'todo',label:'To Do',color:'#4f8ef7'},{key:'in_progress',label:'In Progress',color:'#ff6b35'},{key:'done',label:'Done',color:'#16a34a'}];
+const AVC=['#4f8ef7','#ff6b35','#7c5ce0','#16a34a','#ca8a04','#0891b2'];
+function ga(name){const i=(name||'?').split(' ').map(n=>n[0]||'').join('').toUpperCase().slice(0,2);return{i,c:AVC[i.charCodeAt(0)%AVC.length]};}
+
+sb.auth.onAuthStateChange(async(ev,sess)=>{
+  if(sess){await boot(sess.user);}else{showAuth();}
+});
+
+async function boot(user){
+  try{
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),8000));
+    const result=await Promise.race([
+      sb.from('profiles').select('*').eq('id',user.id).single(),
+      timeout
+    ]);
+    const{data:p,error}=result;
+    if(error||!p){showToast('Profile not found: '+( error?.message||'unknown'),'err');showAuth();return;}
+    ME=p;
+    await Promise.race([loadAll(),new Promise(r=>setTimeout(r,5000))]);
+    buildTopbar();
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    gotoDefault();
+  }catch(e){
+    showToast('Login error: '+e.message,'err');
+    showAuth();
+  }
+}
+async function loadAll(){
+  const[pr,tk]=await Promise.all([
+    sb.from('profiles').select('*').order('full_name'),
+    sb.from('tasks').select('*').order('created_at',{ascending:false})
+  ]);
+  PROFILES=pr.data||[];TASKS=tk.data||[];
+}
+async function doLogin(){
+  const email=document.getElementById('inp-email').value.trim();
+  const pass=document.getElementById('inp-pass').value;
+  const btn=document.getElementById('login-btn');
+  const err=document.getElementById('auth-err');
+  err.style.display='none';
+  if(!email||!pass){err.textContent='Enter email and password';err.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Signing in...';
+  
+  // Timeout after 10 seconds
+  const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Connection timeout. Please try again.')),10000));
+  
+  try{
+    const result=await Promise.race([
+      sb.auth.signInWithPassword({email,password:pass}),
+      timeout
+    ]);
+    if(result.error){
+      err.textContent=result.error.message;err.style.display='block';
+    }
+  }catch(e){
+    err.textContent=e.message;err.style.display='block';
+  }finally{
+    btn.disabled=false;btn.textContent='Sign In';
+  }
+}
+document.getElementById('inp-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+async function doLogout(){await sb.auth.signOut();}
+function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
+
+function buildTopbar(){
+  const r=ME.role;
+  let tabs='';
+  if(r==='ceo')tabs='<button class="nav-btn" onclick="goto(\'board\',this)">My Board</button><button class="nav-btn" onclick="goto(\'overview\',this)">Org Overview</button><button class="nav-btn" onclick="goto(\'people\',this)">People</button>';
+  else if(r==='manager')tabs='<button class="nav-btn" onclick="goto(\'board\',this)">My Board</button><button class="nav-btn" onclick="goto(\'people\',this)">My Team</button>';
+  else tabs='<button class="nav-btn" onclick="goto(\'board\',this)">My Board</button>';
+  document.getElementById('tb-nav').innerHTML=tabs;
+  const name=ME.full_name||ME.email.split('@')[0];
+  const{i,c}=ga(name);
+  const a=document.getElementById('top-ava');a.textContent=i;a.style.background=c;
+  document.getElementById('top-name').textContent=name;
+  const rt=document.getElementById('top-role');rt.textContent=ME.role;rt.className='role-tag rt-'+ME.role;
+}
+function goto(page,btn){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+page).classList.add('active');
+  if(page==='board')renderBoard();
+  if(page==='overview')renderOverview();
+  if(page==='people')renderPeople();
+}
+function gotoDefault(){goto('board',document.querySelector('.nav-btn'));}
+
+function setupFilter(){
+  const sel=document.getElementById('board-filter');
+  const cur=sel.value;
+  let opts='<option value="mine">My Tasks</option>';
+  if(ME.role==='ceo'){opts+='<option value="all">All Tasks</option>';PROFILES.filter(p=>p.id!==ME.id).forEach(p=>{opts+=`<option value="${p.id}">${p.full_name}</option>`;});}
+  else if(ME.role==='manager'){const team=PROFILES.filter(p=>p.manager_id===ME.id);if(team.length){opts+='<option value="team">Full Team</option>';team.forEach(p=>{opts+=`<option value="${p.id}">${p.full_name}</option>`;});}}
+  sel.innerHTML=opts;
+  if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+
+function renderBoard(){
+  setupFilter();
+  const val=document.getElementById('board-filter').value;
+  let tasks=[],title='My Board',sub='Your personal task board';
+  if(val==='mine'||!val){tasks=TASKS.filter(t=>t.assignee_id===ME.id);}
+  else if(val==='all'){tasks=[...TASKS];title='All Tasks';sub='Every task in the org';}
+  else if(val==='team'){const ids=[ME.id,...PROFILES.filter(p=>p.manager_id===ME.id).map(p=>p.id)];tasks=TASKS.filter(t=>ids.includes(t.assignee_id));title='Team Board';sub='Your team tasks';}
+  else{tasks=TASKS.filter(t=>t.assignee_id===val);const per=PROFILES.find(p=>p.id===val);title=(per?per.full_name+"'s":'')+" Board";sub='Viewing their tasks';}
+  document.getElementById('board-title').textContent=title;
+  document.getElementById('board-sub').textContent=sub;
+  const showA=val!=='mine';
+  const canAdd=ME.role==='ceo'||ME.role==='manager'||val==='mine';
+  document.getElementById('kanban-wrap').innerHTML=COLS.map(col=>{
+    const ct=tasks.filter(t=>t.status===col.key);
+    return `<div class="k-col"><div class="k-head"><div class="k-title-row"><div class="k-dot" style="background:${col.color}"></div><div class="k-title">${col.label}</div><div class="k-count">${ct.length}</div></div>${canAdd?`<button class="k-add" onclick="openTaskModal(null,'${col.key}')">+</button>`:''}</div><div class="k-cards" id="col-${col.key}" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}')" ondragleave="onDragLeave(event)">${ct.map(t=>tCardHTML(t,showA)).join('')}${ct.length===0?'<div style="text-align:center;font-size:12px;color:#9ca3af;padding:20px 0">No tasks here</div>':''}</div></div>`;
+  }).join('');
+}
+
+function tCardHTML(t,showA){
+  const ass=PROFILES.find(p=>p.id===t.assignee_id);
+  const{i,c}=ass?ga(ass.full_name):{i:'?',c:'#9ca3af'};
+  const due=t.due_date?new Date(t.due_date+'T00:00:00'):null;
+  const late=due&&due<new Date()&&t.status!=='done';
+  const dueStr=due?due.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';
+  const canDrag=ME.role==='ceo'||ME.role==='manager'||t.assignee_id===ME.id;
+  return `<div class="t-card" id="tc-${t.id}"
+    ondragstart="onDragStart(event,'${t.id}')"
+    ondragend="onDragEnd(event)"
+    ondragenter="event.preventDefault()"
+    onclick="handleCardClick(event,'${t.id}')">
+    ${canDrag?`<div class="drag-handle" draggable="true" onmousedown="makeDraggable('${t.id}')" title="Drag to move">&#8942;&#8942;</div>`:''}
+    <div class="t-top"><div class="pri pri-${t.priority}">${t.priority}</div></div>
+    <div class="t-title-text">${t.title}</div>
+    <div class="t-footer">
+      ${showA&&ass?`<div class="t-ass"><div class="ava" style="background:${c};width:20px;height:20px;font-size:8px">${i}</div><span>${ass.full_name.split(' ')[0]}</span></div>`:'<div></div>'}
+      ${dueStr?`<div class="t-due${late?' late':''}">${dueStr}</div>`:''}
+    </div>
+  </div>`;
+}
+
+// ── DRAG & DROP — separate from click ──
+function makeDraggable(id){
+  const el=document.getElementById('tc-'+id);
+  if(el)el.setAttribute('draggable','true');
+}
+function handleCardClick(e,id){
+  // Only open detail if we didn't just drag
+  if(!dragMoved)openDetail(id);
+}
+function onDragStart(e,id){
+  dragId=id;dragMoved=false;
+  const el=document.getElementById('tc-'+id);
+  if(el)el.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',id);
+}
+function onDragEnd(e){
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.k-cards').forEach(c=>c.classList.remove('drag-over'));
+  // Reset dragMoved after a tick so click handler sees it
+  setTimeout(()=>{dragMoved=false;},50);
+}
+function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+async function onDrop(e,ns){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(!dragId)return;
+  const t=TASKS.find(x=>x.id===dragId);
+  if(!t||t.status===ns){dragId=null;return;}
+  dragMoved=true;
+  TASKS=TASKS.map(x=>x.id===dragId?{...x,status:ns}:x);
+  renderBoard();
+  const{error}=await sb.from('tasks').update({status:ns}).eq('id',dragId);
+  if(error){showToast('Error updating','err');await loadAll();renderBoard();}
+  else showToast('Moved to '+COLS.find(c=>c.key===ns).label,'ok');
+  dragId=null;
+}
+
+function openTaskModal(preA,preS){
+  activeTaskId=null;
+  document.getElementById('m-task-title').textContent='New Task';
+  document.getElementById('t-title').value='';
+  document.getElementById('t-desc').value='';
+  document.getElementById('t-priority').value='medium';
+  document.getElementById('t-status').value=preS||'todo';
+  document.getElementById('t-due').value='';
+  let asgn=ME.role==='ceo'?PROFILES:ME.role==='manager'?[ME,...PROFILES.filter(p=>p.manager_id===ME.id)]:[ME];
+  const fv=document.getElementById('board-filter').value;
+  const defA=preA||(fv!=='mine'&&fv!=='all'&&fv!=='team'?fv:ME.id);
+  document.getElementById('t-assignee').innerHTML='<option value="">Unassigned</option>'+asgn.map(p=>`<option value="${p.id}"${p.id===defA?' selected':''}>${p.full_name} (${p.role})</option>`).join('');
+  openModal('m-task');
+}
+async function saveTask(){
+  const title=document.getElementById('t-title').value.trim();
+  if(!title){showToast('Enter a task title','err');return;}
+  const payload={title,description:document.getElementById('t-desc').value.trim()||null,assignee_id:document.getElementById('t-assignee').value||null,priority:document.getElementById('t-priority').value,status:document.getElementById('t-status').value,due_date:document.getElementById('t-due').value||null,created_by:ME.id};
+  if(activeTaskId){
+    const{error}=await sb.from('tasks').update(payload).eq('id',activeTaskId);
+    if(error){showToast('Error: '+error.message,'err');return;}
+    showToast('Task updated','ok');
+  }else{
+    const{error}=await sb.from('tasks').insert(payload);
+    if(error){showToast('Error: '+error.message,'err');return;}
+    showToast('Task created','ok');
+  }
+  closeModal('m-task');await loadAll();
+  const ap=document.querySelector('.page.active');
+  if(ap){if(ap.id==='pg-board')renderBoard();if(ap.id==='pg-overview')renderOverview();}
+}
+
+async function openDetail(taskId){
+  const t=TASKS.find(x=>x.id===taskId);if(!t)return;
+  activeTaskId=taskId;
+  const ass=PROFILES.find(p=>p.id===t.assignee_id);
+  const cre=PROFILES.find(p=>p.id===t.created_by);
+  const due=t.due_date?new Date(t.due_date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}):'No due date';
+  const canEdit=ME.role==='ceo'||ME.role==='manager'||t.assignee_id===ME.id;
+  const canDel=ME.role==='ceo'||ME.role==='manager';
+  document.getElementById('d-title').textContent=t.title;
+  document.getElementById('d-edit-btn').style.display=canEdit?'':'none';
+  document.getElementById('d-del-btn').style.display=canDel?'':'none';
+  const sc={todo:'#4f8ef7',in_progress:'#ff6b35',done:'#16a34a'};
+  const sl={todo:'To Do',in_progress:'In Progress',done:'Done'};
+  document.getElementById('d-meta').innerHTML=`
+    <div><div class="dl">Status</div>${canEdit?`<select class="btn btn-ghost btn-sm" style="width:100%" onchange="quickStatus('${t.id}',this.value)"><option value="todo"${t.status==='todo'?' selected':''}>To Do</option><option value="in_progress"${t.status==='in_progress'?' selected':''}>In Progress</option><option value="done"${t.status==='done'?' selected':''}>Done</option></select>`:`<div class="dv" style="color:${sc[t.status]}">${sl[t.status]}</div>`}</div>
+    <div><div class="dl">Priority</div><div class="pri pri-${t.priority}" style="display:inline-flex">${t.priority}</div></div>
+    <div><div class="dl">Assigned To</div><div class="dv">${ass?ass.full_name:'Unassigned'}</div></div>
+    <div><div class="dl">Due Date</div><div class="dv">${due}</div></div>
+    <div><div class="dl">Created By</div><div class="dv" style="color:#6b7280;font-size:13px">${cre?cre.full_name:'Unknown'}</div></div>`;
+  document.getElementById('d-desc').innerHTML=t.description?`<div style="background:#f4f5f7;border-radius:8px;padding:12px;font-size:13px;color:#374151;line-height:1.65;margin-bottom:4px">${t.description}</div>`:'';
+  const{i,c}=ga(ME.full_name);const ca=document.getElementById('c-ava');ca.textContent=i;ca.style.background=c;
+  const{data:comments}=await sb.from('comments').select('*').eq('task_id',taskId).order('created_at');
+  renderComments(comments||[]);
+  openModal('m-detail');
+}
+function renderComments(comments){
+  const el=document.getElementById('c-list');
+  if(!comments.length){el.innerHTML='<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">No comments yet. Be the first!</div>';return;}
+  el.innerHTML=comments.map(c=>{
+    const auth=PROFILES.find(p=>p.id===c.author_id);
+    const{i,col}=auth?{i:ga(auth.full_name).i,col:ga(auth.full_name).c}:{i:'?',col:'#9ca3af'};
+    const time=new Date(c.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div class="c-item"><div class="ava" style="background:${col};flex-shrink:0;width:28px;height:28px;font-size:10px">${i}</div><div class="c-body"><div class="c-meta"><span class="c-author">${auth?auth.full_name:'Unknown'}</span><span class="c-time">${time}</span></div><div class="c-text">${c.body}</div></div></div>`;
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+async function addComment(){
+  const inp=document.getElementById('cinput');
+  const body=inp.value.trim();if(!body||!activeTaskId)return;
+  const{error}=await sb.from('comments').insert({task_id:activeTaskId,author_id:ME.id,body});
+  if(error){showToast('Error posting comment','err');return;}
+  inp.value='';
+  const{data:comments}=await sb.from('comments').select('*').eq('task_id',activeTaskId).order('created_at');
+  renderComments(comments||[]);showToast('Comment posted','ok');
+}
+document.getElementById('cinput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addComment();}});
+
+async function quickStatus(taskId,status){
+  TASKS=TASKS.map(t=>t.id===taskId?{...t,status}:t);
+  await sb.from('tasks').update({status}).eq('id',taskId);
+  showToast('Status updated','ok');renderBoard();
+}
+function editFromDetail(){
+  const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;
+  closeModal('m-detail');
+  document.getElementById('m-task-title').textContent='Edit Task';
+  document.getElementById('t-title').value=t.title;
+  document.getElementById('t-desc').value=t.description||'';
+  document.getElementById('t-priority').value=t.priority;
+  document.getElementById('t-status').value=t.status;
+  document.getElementById('t-due').value=t.due_date||'';
+  let asgn=ME.role==='ceo'?PROFILES:[ME,...PROFILES.filter(p=>p.manager_id===ME.id)];
+  document.getElementById('t-assignee').innerHTML='<option value="">Unassigned</option>'+asgn.map(p=>`<option value="${p.id}"${p.id===t.assignee_id?' selected':''}>${p.full_name} (${p.role})</option>`).join('');
+  openModal('m-task');
+}
+async function deleteTask(){
+  if(!activeTaskId||!confirm('Delete this task?'))return;
+  const{error}=await sb.from('tasks').delete().eq('id',activeTaskId);
+  if(error){showToast('Error deleting','err');return;}
+  showToast('Task deleted','ok');closeModal('m-detail');await loadAll();renderBoard();
+}
+
+function renderOverview(){
+  const todo=TASKS.filter(t=>t.status==='todo').length;
+  const inp=TASKS.filter(t=>t.status==='in_progress').length;
+  const done=TASKS.filter(t=>t.status==='done').length;
+  document.getElementById('stats').innerHTML=`<div class="stat" style="border-top-color:#4f8ef7"><div class="stat-label">To Do</div><div class="stat-val">${todo}</div><div class="stat-sub">waiting</div></div><div class="stat" style="border-top-color:#ff6b35"><div class="stat-label">In Progress</div><div class="stat-val">${inp}</div><div class="stat-sub">active</div></div><div class="stat" style="border-top-color:#16a34a"><div class="stat-label">Done</div><div class="stat-val">${done}</div><div class="stat-sub">completed</div></div>`;
+  document.getElementById('ov-person').innerHTML='<option value="">Everyone</option>'+PROFILES.map(p=>`<option value="${p.id}">${p.full_name}</option>`).join('');
+  renderOvList();
+}
+function renderOvList(){
+  const pf=document.getElementById('ov-person').value;
+  const sf=document.getElementById('ov-status').value;
+  let tasks=[...TASKS];
+  if(pf)tasks=tasks.filter(t=>t.assignee_id===pf);
+  if(sf)tasks=tasks.filter(t=>t.status===sf);
+  const el=document.getElementById('ov-list');
+  if(!tasks.length){el.innerHTML='<div class="empty"><h3>No tasks</h3><p>Adjust filters or add a task</p></div>';return;}
+  const sc={todo:'#4f8ef7',in_progress:'#ff6b35',done:'#16a34a'};
+  const sl={todo:'To Do',in_progress:'In Progress',done:'Done'};
+  el.innerHTML=tasks.map(t=>{
+    const ass=PROFILES.find(p=>p.id===t.assignee_id);
+    const due=t.due_date?new Date(t.due_date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}):'';
+    const late=t.due_date&&new Date(t.due_date+'T00:00:00')<new Date()&&t.status!=='done';
+    return `<div class="ov-row" onclick="openDetail('${t.id}')"><div style="width:8px;height:8px;border-radius:50%;background:${sc[t.status]};flex-shrink:0"></div><div style="flex:1;font-size:13px;font-weight:600">${t.title}</div><div class="pri pri-${t.priority}">${t.priority}</div>${ass?`<div style="font-size:12px;color:#9ca3af">${ass.full_name}</div>`:''}<div class="t-due${late?' late':''}">${due}</div><div style="font-size:12px;color:${sc[t.status]};font-weight:600;min-width:80px;text-align:right">${sl[t.status]}</div></div>`;
+  }).join('');
+}
+
+function renderPeople(){
+  const isCeo=ME.role==='ceo';
+  const people=isCeo?PROFILES.filter(p=>p.id!==ME.id):PROFILES.filter(p=>p.manager_id===ME.id);
+  document.getElementById('ppl-sub').textContent=isCeo?`${people.length} people in your workspace`:`${people.length} people report to you`;
+  document.getElementById('add-ppl-btn').style.display=isCeo?'':'none';
+  const el=document.getElementById('ppl-grid');
+  if(!people.length){el.innerHTML='<div class="empty"><h3>No people yet</h3><p>Add your first team member</p></div>';return;}
+  el.innerHTML=people.map(p=>{
+    const{i,c}=ga(p.full_name);
+    const mgr=PROFILES.find(m=>m.id===p.manager_id);
+    const rc={ceo:'pr-ceo',manager:'pr-manager',member:'pr-member'}[p.role]||'pr-member';
+    const open=TASKS.filter(t=>t.assignee_id===p.id&&t.status!=='done').length;
+    return `<div class="p-card"><div class="ava ava-md" style="background:${c}">${i}</div><div class="p-info"><div class="p-name">${p.full_name}</div><div class="p-email">${p.email}</div><div class="p-meta"><span class="p-role ${rc}">${p.role}</span>${mgr?`<span style="font-size:11px;color:#9ca3af">→ ${mgr.full_name}</span>`:''}<span style="font-size:11px;color:#9ca3af">${open} open</span></div></div><div class="p-actions">${isCeo?`<button class="btn btn-xs btn-ghost" onclick="openEditPerson('${p.id}')">Edit</button>`:''}<button class="btn btn-xs btn-acc" onclick="openTaskModal('${p.id}')">+ Task</button></div></div>`;
+  }).join('');
+}
+
+function openPersonModal(){
+  document.getElementById('p-name').value='';document.getElementById('p-email').value='';document.getElementById('p-pass').value='';document.getElementById('p-role').value='member';
+  const mgrs=PROFILES.filter(p=>p.role==='manager'||p.role==='ceo');
+  document.getElementById('p-mgr').innerHTML='<option value="">No manager</option>'+mgrs.map(p=>`<option value="${p.id}">${p.full_name} (${p.role})</option>`).join('');
+  openModal('m-person');
+}
+async function savePerson(){
+  const name=document.getElementById('p-name').value.trim();
+  const email=document.getElementById('p-email').value.trim();
+  const pass=document.getElementById('p-pass').value;
+  const role=document.getElementById('p-role').value;
+  const mgr=document.getElementById('p-mgr').value;
+  if(!name||!email||!pass){showToast('Fill all fields','err');return;}
+  if(pass.length<6){showToast('Password must be 6+ characters','err');return;}
+  const{data:{session:cur}}=await sb.auth.getSession();
+  const{data:su,error:se}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+  if(se){showToast('Error: '+se.message,'err');return;}
+  const uid=su.user?.id;
+  if(uid)await sb.from('profiles').upsert({id:uid,full_name:name,email,role,manager_id:mgr||null});
+  if(cur)await sb.auth.setSession({access_token:cur.access_token,refresh_token:cur.refresh_token});
+  closeModal('m-person');showToast(name+' added!','ok');await loadAll();renderPeople();
+}
+function openEditPerson(id){
+  editingPersonId=id;const p=PROFILES.find(x=>x.id===id);if(!p)return;
+  document.getElementById('ep-name').value=p.full_name;
+  document.getElementById('ep-role').value=p.role;
+  const others=PROFILES.filter(x=>x.id!==id&&(x.role==='manager'||x.role==='ceo'));
+  document.getElementById('ep-mgr').innerHTML='<option value="">None</option>'+others.map(x=>`<option value="${x.id}"${x.id===p.manager_id?' selected':''}>${x.full_name} (${x.role})</option>`).join('');
+  openModal('m-edit-person');
+}
+async function updatePerson(){
+  const name=document.getElementById('ep-name').value.trim();
+  const role=document.getElementById('ep-role').value;
+  const mgr=document.getElementById('ep-mgr').value;
+  if(!name){showToast('Enter a name','err');return;}
+  const{error}=await sb.from('profiles').update({full_name:name,role,manager_id:mgr||null}).eq('id',editingPersonId);
+  if(error){showToast('Error: '+error.message,'err');return;}
+  closeModal('m-edit-person');showToast('Updated!','ok');await loadAll();renderPeople();
+}
+
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+let toastT;
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>

@@ -1257,13 +1257,75 @@ sb.auth.onAuthStateChange(async(ev,sess)=>{
   }
 });
 
+/* Detect transient errors worth retrying — primarily Supabase's auth-token lock
+   conflicts ("lock:sb-...auth-token was released because another request stole it")
+   and similar JWT/session race conditions that resolve once the conflicting tab
+   finishes its refresh. Real "wrong credentials" or "row not found" errors should
+   NOT be retried. */
+function isTransientAuthError(err){
+  if(!err)return false;
+  const msg=(err.message||err.toString()||'').toLowerCase();
+  return msg.includes('lock:sb-')
+      || msg.includes('was released because another request stole it')
+      || msg.includes('navigator lock')
+      || msg.includes('jwt expired')
+      || msg.includes('session_not_found');
+}
+
+async function fetchMyProfile(userId){
+  /* Try up to 3 times with exponential backoff for transient auth/lock errors */
+  let lastErr=null;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      const{data,error}=await sb.from('profiles').select('*').eq('id',userId).single();
+      if(error){
+        lastErr=error;
+        if(!isTransientAuthError(error))break;  /* don't retry real errors */
+      }else if(data){
+        return{data,error:null};
+      }
+    }catch(e){
+      lastErr=e;
+      if(!isTransientAuthError(e))break;
+    }
+    /* Wait 250ms, 600ms before next attempt — gives the conflicting tab time to settle */
+    await new Promise(r=>setTimeout(r,250+attempt*350));
+  }
+  return{data:null,error:lastErr};
+}
+
 async function boot(user){
   try{
-    /* Fetch the current user's profile. No artificial timeout — let network
-       errors surface naturally. Supabase has its own internal retries. */
-    const{data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
+    const{data:p,error}=await fetchMyProfile(user.id);
     if(error||!p){
-      showToast('Profile not found: '+(error?.message||'unknown'),'err');
+      const msg=error?.message||'unknown';
+      /* If even after retries we still hit a transient auth lock issue, don't
+         throw the user to a login screen — that just makes them re-enter
+         credentials only to land in the same race. Show a softer toast and
+         keep their session intact. */
+      if(isTransientAuthError(error)){
+        showToast('Reconnecting…','err');
+        APP_BOOTED=false;
+        /* Try one more time after a longer wait, then either succeed or surface */
+        await new Promise(r=>setTimeout(r,1000));
+        const{data:p2,error:e2}=await fetchMyProfile(user.id);
+        if(p2){
+          ME=p2;
+          await loadAll();
+          buildTopbar();
+          document.getElementById('auth-screen').style.display='none';
+          document.getElementById('app').style.display='block';
+          gotoDefault();
+          APP_BOOTED=true;
+          return;
+        }
+        /* Still failing — show a clearer message, leave them on login */
+        showToast('Could not connect. Try refreshing the page.','err');
+        APP_BOOTED=false;
+        showAuth();
+        return;
+      }
+      showToast('Profile not found: '+msg,'err');
       APP_BOOTED=false;
       showAuth();
       return;
@@ -1277,7 +1339,11 @@ async function boot(user){
     document.getElementById('app').style.display='block';
     gotoDefault();
   }catch(e){
-    showToast('Login error: '+e.message,'err');
+    if(isTransientAuthError(e)){
+      showToast('Connection issue. Try refreshing.','err');
+    }else{
+      showToast('Login error: '+e.message,'err');
+    }
     APP_BOOTED=false;
     showAuth();
   }

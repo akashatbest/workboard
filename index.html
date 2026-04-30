@@ -414,13 +414,58 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .t-body{padding:8px 12px 10px}
 
 .t-labels{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
-.t-label{height:8px;min-width:40px;max-width:56px;border-radius:4px;flex-shrink:0}
+.t-label{
+  height:16px;
+  min-width:40px;max-width:200px;
+  border-radius:4px;
+  flex-shrink:0;
+  display:inline-flex;align-items:center;
+  padding:0 8px;
+  font-size:11px;font-weight:700;
+  color:rgba(0,0,0,.78);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  line-height:1;
+}
+/* Compact bars on board cards: hide the text, shrink height */
+.t-card .t-label{
+  height:8px;
+  font-size:0;
+  padding:0;
+  min-width:40px;max-width:56px;
+}
 .t-label.l-green{background:var(--label-green)}
 .t-label.l-yellow{background:var(--label-yellow)}
 .t-label.l-orange{background:var(--label-orange)}
 .t-label.l-red{background:var(--label-red)}
 .t-label.l-purple{background:var(--label-purple)}
 .t-label.l-blue{background:var(--label-blue)}
+
+/* Label picker grid in detail modal */
+.label-picker{display:flex;flex-direction:column;gap:6px}
+.label-picker-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;
+  border-radius:6px;
+  cursor:pointer;
+  transition:background .14s;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(9,30,66,.06);
+}
+.label-picker-row:hover{background:#fafbfc}
+.label-picker-bar{
+  flex:1;
+  height:30px;border-radius:4px;
+  display:flex;align-items:center;
+  padding:0 12px;
+  font-size:13px;font-weight:600;
+  color:rgba(0,0,0,.78);
+}
+.label-picker-check{
+  width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--ink);
+  font-size:14px;font-weight:800;
+}
 
 .t-title-text{
   font-size:14px;font-weight:500;
@@ -444,6 +489,94 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .t-badge.due-late{background:#ffd2cc;color:#bf2600}
 .t-badge.due-late svg{color:#bf2600}
 .t-badge.checklist-complete{background:#d3f1a7;color:#2e6b1a}
+
+/* ============================================================
+   CHECKLIST in detail modal (Session 3)
+   ============================================================ */
+.checklist-section{
+  border-top:1px solid var(--line-soft);
+  margin-top:18px;padding-top:18px;
+}
+.checklist-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;gap:10px;
+}
+.checklist-title{
+  font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);
+}
+.checklist-progress-wrap{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:12px;
+}
+.checklist-progress-num{
+  font-size:11px;font-weight:700;color:var(--muted);
+  min-width:30px;
+}
+.checklist-progress-bar{
+  flex:1;height:8px;background:var(--line-soft);
+  border-radius:4px;overflow:hidden;
+}
+.checklist-progress-fill{
+  height:100%;background:var(--label-blue);
+  transition:width .25s ease, background .25s ease;
+}
+.checklist-progress-fill.complete{background:var(--label-green)}
+
+.checklist-items{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.checklist-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:6px 8px;
+  border-radius:6px;
+  transition:background .14s;
+}
+.checklist-item:hover{background:rgba(9,30,66,.04)}
+.checklist-checkbox{
+  width:18px;height:18px;
+  flex-shrink:0;margin-top:1px;
+  cursor:pointer;
+  accent-color:var(--label-green);
+}
+.checklist-text{
+  flex:1;font-size:13px;color:var(--ink);line-height:1.5;
+  word-wrap:break-word;
+  cursor:pointer;
+}
+.checklist-text.done{
+  color:var(--muted-soft);
+  text-decoration:line-through;
+}
+.checklist-delete{
+  width:24px;height:24px;
+  background:transparent;border:none;
+  color:var(--muted-soft);cursor:pointer;
+  font-size:14px;line-height:1;
+  border-radius:4px;
+  opacity:0;transition:opacity .14s,color .14s,background .14s;
+}
+.checklist-item:hover .checklist-delete{opacity:1}
+.checklist-delete:hover{color:#bf2600;background:rgba(191,38,0,.1)}
+
+.checklist-add-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.checklist-add-input{
+  flex:1;
+  padding:8px 12px;
+  background:#fff;
+  border:2px solid #fff;
+  border-radius:6px;
+  font-family:inherit;font-size:13px;
+  color:var(--ink);
+  outline:none;
+  box-shadow:0 1px 2px rgba(9,30,66,.06);
+  transition:border-color .14s;
+}
+.checklist-add-input:focus{border-color:var(--accent)}
+
+.checklist-readonly-note{
+  font-size:11px;color:var(--muted-soft);
+  margin-top:6px;font-style:italic;
+}
 
 .t-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
 .pri{
@@ -760,6 +893,27 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
     <div class="m-body">
       <div class="detail-grid" id="d-meta"></div>
       <div id="d-desc"></div>
+
+      <!-- Labels section (Session 3) -->
+      <div id="d-labels-section" style="border-top:1px solid var(--line-soft);margin-top:18px;padding-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="c-title" style="margin-bottom:0">Labels</div>
+          <button class="btn btn-ghost btn-xs" id="d-labels-toggle" onclick="toggleLabelPicker()">Edit</button>
+        </div>
+        <div id="d-labels-display"></div>
+        <div id="d-labels-picker" style="display:none;margin-top:10px"></div>
+      </div>
+
+      <!-- Checklist section (Session 3) -->
+      <div class="checklist-section" id="d-checklist-section">
+        <div class="checklist-head">
+          <div class="checklist-title">Checklist</div>
+        </div>
+        <div id="d-checklist-progress"></div>
+        <div class="checklist-items" id="d-checklist-items"></div>
+        <div id="d-checklist-add"></div>
+      </div>
+
       <div class="comments-wrap">
         <div class="c-title">Comments</div>
         <div class="c-list" id="c-list"></div>
@@ -813,6 +967,20 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 let ME=null,PROFILES=[],TASKS=[],activeTaskId=null,editingPersonId=null,dragId=null,dragMoved=false;
 const COLS=[{key:'todo',label:'To Do',color:'#0079bf'},{key:'in_progress',label:'In Progress',color:'#ff9f1a'},{key:'done',label:'Done',color:'#61bd4f'}];
 const AVC=['#0079bf','#ff6b35','#7c5ce0','#16a34a','#ca8a04','#0891b2','#c377e0','#eb5a46'];
+
+/* ============================================================
+   LABELS — fixed Trello-style set (Session 3)
+   Stored on tasks.labels as a text[] of these key strings.
+   ============================================================ */
+const LABELS=[
+  {key:'green',  name:'Done',      color:'#61bd4f'},
+  {key:'yellow', name:'In Review', color:'#f2d600'},
+  {key:'orange', name:'Blocked',   color:'#ff9f1a'},
+  {key:'red',    name:'Urgent',    color:'#eb5a46'},
+  {key:'purple', name:'Bug',       color:'#c377e0'},
+  {key:'blue',   name:'Feature',   color:'#0079bf'}
+];
+function labelByKey(k){return LABELS.find(l=>l.key===k);}
 
 /* ============================================================
    SECURITY — XSS escape helper (NEW — Session 1)
@@ -1355,11 +1523,198 @@ async function openDetail(taskId){
     <div><div class="dl">Created By</div><div class="dv" style="color:var(--muted);font-size:13px">${cre?esc(cre.full_name):'Unknown'}</div></div>`;
   /* SECURITY: description is user-supplied — escape, then preserve newlines via CSS white-space:pre-wrap */
   document.getElementById('d-desc').innerHTML=t.description?`<div>${esc(t.description)}</div>`:'';
+
+  /* Reset label picker to closed state on each open, then render */
+  document.getElementById('d-labels-picker').style.display='none';
+  document.getElementById('d-labels-toggle').textContent='Edit';
+  renderLabelsForTask(t,canEdit);
+
+  /* Render checklist */
+  renderChecklistForTask(t);
+
   const{i,c}=ga(ME.full_name);const ca=document.getElementById('c-ava');ca.textContent=i;ca.style.background=c;
   const{data:comments}=await sb.from('comments').select('*').eq('task_id',taskId).order('created_at');
   renderComments(comments||[]);
   openModal('m-detail');
 }
+/* ============================================================
+   LABELS — render and edit (Session 3)
+   ============================================================ */
+function renderLabelsForTask(t,canEdit){
+  const labels=Array.isArray(t.labels)?t.labels:[];
+  const display=document.getElementById('d-labels-display');
+  const toggle=document.getElementById('d-labels-toggle');
+  toggle.style.display=canEdit?'':'none';
+
+  if(!labels.length){
+    display.innerHTML='<div style="font-size:13px;color:var(--muted-soft)">No labels</div>';
+  }else{
+    display.innerHTML='<div class="t-labels" style="margin-bottom:0">'+
+      labels.map(k=>{
+        const L=labelByKey(k);if(!L)return '';
+        return `<span class="t-label l-${esc(L.key)}">${esc(L.name)}</span>`;
+      }).join('')+'</div>';
+  }
+  /* Build the picker (always built but hidden) */
+  const picker=document.getElementById('d-labels-picker');
+  picker.innerHTML='<div class="label-picker">'+
+    LABELS.map(L=>{
+      const active=labels.includes(L.key);
+      return `<div class="label-picker-row" onclick="toggleLabel('${esc(L.key)}')">
+        <div class="label-picker-bar l-${esc(L.key)}" style="background:${L.color}">${esc(L.name)}</div>
+        <div class="label-picker-check">${active?'&#10003;':''}</div>
+      </div>`;
+    }).join('')+'</div>';
+}
+
+function toggleLabelPicker(){
+  const picker=document.getElementById('d-labels-picker');
+  const toggle=document.getElementById('d-labels-toggle');
+  const showing=picker.style.display!=='none';
+  picker.style.display=showing?'none':'';
+  toggle.textContent=showing?'Edit':'Done';
+}
+
+async function toggleLabel(labelKey){
+  if(!activeTaskId)return;
+  const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;
+  const canEdit=ME.role==='ceo'||ME.role==='manager'||t.assignee_id===ME.id;
+  if(!canEdit){showToast('No permission to edit labels','err');return;}
+
+  const cur=Array.isArray(t.labels)?t.labels.slice():[];
+  const idx=cur.indexOf(labelKey);
+  if(idx>=0)cur.splice(idx,1);else cur.push(labelKey);
+
+  /* Optimistic local update */
+  TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,labels:cur}:x);
+  renderLabelsForTask({...t,labels:cur},canEdit);
+
+  const{error}=await sb.from('tasks').update({labels:cur}).eq('id',activeTaskId);
+  if(error){
+    showToast('Error: '+error.message,'err');
+    /* Revert on error */
+    TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,labels:t.labels}:x);
+    renderLabelsForTask(t,canEdit);
+    return;
+  }
+  /* Re-render the board so card-level labels update */
+  if(document.getElementById('pg-board').classList.contains('active'))renderBoard();
+}
+
+/* ============================================================
+   CHECKLIST — render and edit (Session 3)
+   Permission: ONLY assignee or creator (per Session 3 decision)
+   ============================================================ */
+function canEditChecklist(t){
+  if(!t)return false;
+  return t.assignee_id===ME.id||t.created_by===ME.id;
+}
+
+function renderChecklistForTask(t){
+  const items=Array.isArray(t.checklist)?t.checklist:[];
+  const total=items.length;
+  const done=items.filter(it=>it&&it.done).length;
+  const allowEdit=canEditChecklist(t);
+
+  /* Progress bar */
+  const progEl=document.getElementById('d-checklist-progress');
+  if(total>0){
+    const pct=Math.round((done/total)*100);
+    progEl.innerHTML=`<div class="checklist-progress-wrap">
+      <span class="checklist-progress-num">${done}/${total}</span>
+      <div class="checklist-progress-bar"><div class="checklist-progress-fill${done===total?' complete':''}" style="width:${pct}%"></div></div>
+    </div>`;
+  }else{
+    progEl.innerHTML='';
+  }
+
+  /* Items */
+  const itemsEl=document.getElementById('d-checklist-items');
+  if(!total){
+    itemsEl.innerHTML='<div style="font-size:13px;color:var(--muted-soft);padding:6px 8px">No items yet.</div>';
+  }else{
+    itemsEl.innerHTML=items.map((it,idx)=>{
+      const safeText=esc(it&&it.text||'');
+      const isDone=it&&it.done;
+      const checkboxAttrs=allowEdit?`onchange="toggleChecklistItem(${idx})"`:'disabled';
+      const textClick=allowEdit?`onclick="toggleChecklistItem(${idx})"`:'';
+      return `<div class="checklist-item">
+        <input type="checkbox" class="checklist-checkbox" ${isDone?'checked':''} ${checkboxAttrs}>
+        <div class="checklist-text${isDone?' done':''}" ${textClick}>${safeText}</div>
+        ${allowEdit?`<button class="checklist-delete" title="Delete item" onclick="deleteChecklistItem(${idx})">&#x2715;</button>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  /* Add row */
+  const addEl=document.getElementById('d-checklist-add');
+  if(allowEdit){
+    addEl.innerHTML=`<div class="checklist-add-row">
+      <input type="text" class="checklist-add-input" id="checklist-new-text" maxlength="200" placeholder="Add an item..." onkeydown="checklistAddKeydown(event)">
+      <button class="btn btn-acc btn-sm" onclick="addChecklistItem()">Add</button>
+    </div>`;
+  }else{
+    addEl.innerHTML='<div class="checklist-readonly-note">Only the assignee or creator can edit this checklist.</div>';
+  }
+}
+
+async function persistChecklist(newItems){
+  if(!activeTaskId)return false;
+  /* Optimistic */
+  TASKS=TASKS.map(x=>x.id===activeTaskId?{...x,checklist:newItems}:x);
+  renderChecklistForTask(TASKS.find(x=>x.id===activeTaskId));
+  const{error}=await sb.from('tasks').update({checklist:newItems}).eq('id',activeTaskId);
+  if(error){
+    showToast('Error: '+error.message,'err');
+    /* Revert by re-loading on error */
+    await loadAll();
+    const fresh=TASKS.find(x=>x.id===activeTaskId);
+    if(fresh)renderChecklistForTask(fresh);
+    return false;
+  }
+  /* Re-render board so the badge updates */
+  if(document.getElementById('pg-board').classList.contains('active'))renderBoard();
+  return true;
+}
+
+async function addChecklistItem(){
+  const inp=document.getElementById('checklist-new-text');
+  if(!inp)return;
+  const text=inp.value.trim();
+  if(!text){inp.focus();return;}
+  const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;
+  if(!canEditChecklist(t)){showToast('No permission','err');return;}
+  const cur=Array.isArray(t.checklist)?t.checklist.slice():[];
+  cur.push({text,done:false});
+  inp.value='';
+  await persistChecklist(cur);
+  /* Refocus input for rapid sequential adds */
+  const newInp=document.getElementById('checklist-new-text');
+  if(newInp)newInp.focus();
+}
+
+function checklistAddKeydown(e){
+  if(e.key==='Enter'){e.preventDefault();addChecklistItem();}
+}
+
+async function toggleChecklistItem(idx){
+  const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;
+  if(!canEditChecklist(t)){showToast('No permission','err');return;}
+  const cur=Array.isArray(t.checklist)?t.checklist.slice():[];
+  if(idx<0||idx>=cur.length)return;
+  cur[idx]={...cur[idx],done:!cur[idx].done};
+  await persistChecklist(cur);
+}
+
+async function deleteChecklistItem(idx){
+  const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;
+  if(!canEditChecklist(t)){showToast('No permission','err');return;}
+  const cur=Array.isArray(t.checklist)?t.checklist.slice():[];
+  if(idx<0||idx>=cur.length)return;
+  cur.splice(idx,1);
+  await persistChecklist(cur);
+}
+
 function renderComments(comments){
   const el=document.getElementById('c-list');
   if(!comments.length){el.innerHTML='<div style="font-size:13px;color:var(--muted-soft);text-align:center;padding:16px 0">No comments yet. Be the first!</div>';return;}

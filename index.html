@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#f4f5f7;color:#1a1a2e;min-height:100vh;font-size:14px}
+body{font-family:system-ui,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh;font-size:14px}
 /* AUTH */
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f5f7}
 #app{display:none}
@@ -49,7 +49,7 @@ h2{font-size:22px;font-weight:700;margin-bottom:4px}
 .signout-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:system-ui,sans-serif}
 .signout-btn:hover{color:#fff;background:rgba(255,255,255,.15)}
 /* PAGES */
-.page{display:none;padding:24px 28px}.page.active{display:block}
+.page{display:none;padding:28px 32px}.page.active{display:block}
 .page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
 .page-title{font-size:20px;font-weight:800}.page-sub{color:#6b7280;font-size:13px;margin-top:3px}
 /* KANBAN */
@@ -65,8 +65,8 @@ h2{font-size:22px;font-weight:700;margin-bottom:4px}
 .k-cards{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;min-height:100px;transition:background .15s;border-radius:0 0 10px 10px}
 .k-cards.drag-over{background:#fff7f5}
 /* TASK CARD */
-.t-card{background:#fff;border:1.5px solid #e2e4e8;border-radius:10px;padding:12px 14px;cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s;user-select:none;position:relative}
-.t-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.1);border-color:#d1d5db;transform:translateY(-1px)}
+.t-card{background:#fff;border:1.5px solid #e8eaed;border-radius:10px;padding:13px 15px;cursor:pointer;transition:box-shadow .2s,transform .2s,border-color .2s;user-select:none;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.t-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.1);border-color:#c8cdd5;transform:translateY(-2px)}
 .t-card.dragging{opacity:.4;cursor:grabbing;transform:scale(.97)}
 .t-card.is-dragging{cursor:grabbing}
 .t-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -422,8 +422,8 @@ function renderPersonBoard(person,tasks,canAdd){
   const done=tasks.filter(t=>t.status==='done');
   const open=tasks.filter(t=>t.status!=='done').length;
   const rc={ceo:'#ea580c',manager:'#16a34a',member:'#6b7280'}[person.role]||'#6b7280';
-  return `<div style="margin-bottom:32px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #e2e4e8">
+ return `<div style="margin-bottom:28px;background:#fff;border:1.5px solid #e8eaed;border-radius:14px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1.5px solid #f0f2f5">
       <div class="ava ava-md" style="background:${c}">${i}</div>
       <div>
         <div style="font-size:16px;font-weight:700">${person.full_name}</div>
@@ -436,15 +436,15 @@ function renderPersonBoard(person,tasks,canAdd){
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
       ${[{key:'todo',label:'To Do',color:'#4f8ef7',items:todo},{key:'in_progress',label:'In Progress',color:'#ff6b35',items:inp},{key:'done',label:'Done',color:'#16a34a',items:done}].map(col=>`
-        <div style="background:#fff;border:1.5px solid #e2e4e8;border-radius:10px;overflow:hidden">
-          <div style="padding:10px 14px;border-bottom:1.5px solid #e2e4e8;display:flex;align-items:center;gap:8px">
+        <div style="background:#f8f9fb;border:1.5px solid #e8eaed;border-radius:10px;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1.5px solid #ebedf0;display:flex;align-items:center;gap:8px;background:#fff">
             <div style="width:7px;height:7px;border-radius:50%;background:${col.color}"></div>
             <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">${col.label}</span>
             <span style="margin-left:auto;font-size:11px;font-weight:700;color:#9ca3af;background:#f4f5f7;padding:1px 7px;border-radius:6px">${col.items.length}</span>
           </div>
-          <div style="padding:8px;display:flex;flex-direction:column;gap:7px;min-height:80px" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}','${person.id}')" ondragleave="onDragLeave(event)">
+          <div style="padding:8px;display:flex;flex-direction:column;gap:7px;min-height:90px;background:#f8f9fb" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}','${person.id}')" ondragleave="onDragLeave(event)">
             ${col.items.map(t=>tCardHTML(t,false)).join('')}
-            ${col.items.length===0?'<div style="text-align:center;font-size:12px;color:#d1d5db;padding:16px 0">Empty</div>':''}
+${col.items.length===0?'<div style="text-align:center;font-size:12px;color:#c8cdd5;padding:20px 0;border:1.5px dashed #e8eaed;border-radius:8px;margin:4px">No tasks</div>':''}
           </div>
         </div>`).join('')}
     </div>

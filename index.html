@@ -1235,26 +1235,33 @@ function ga(name){const i=(name||'?').split(' ').map(n=>n[0]||'').join('').toUpp
    changed". Otherwise tab-focus / token refresh would re-run boot() and could
    bounce the user back to login if any background fetch glitched.
    ============================================================ */
-let APP_BOOTED=false;
 let SUPPRESS_AUTH_EVENTS=false;  /* Set true during admin signup flow */
+let CURRENT_BOOTED_USER_ID=null; /* Tracks which user the app is currently booted for */
 
 sb.auth.onAuthStateChange(async(ev,sess)=>{
   /* During savePerson we briefly create a new auth session and then restore
      the original CEO session. Don't react to those intermediate events. */
   if(SUPPRESS_AUTH_EVENTS)return;
 
-  if(ev==='SIGNED_OUT'||(!sess&&APP_BOOTED)){
-    APP_BOOTED=false;
+  /* Real sign-out, or session disappeared after we'd booted the app */
+  if(ev==='SIGNED_OUT'||(!sess&&CURRENT_BOOTED_USER_ID)){
+    CURRENT_BOOTED_USER_ID=null;
     ME=null;
     showAuth();
     return;
   }
-  /* Only boot once per session. Token refreshes and re-focus events keep the
-     same session and should not re-run boot. */
-  if(sess&&!APP_BOOTED){
-    APP_BOOTED=true;
-    await boot(sess.user);
-  }
+  /* If we don't have a session at all and we weren't booted, just stay on auth screen */
+  if(!sess)return;
+
+  /* Boot only when:
+     - We haven't booted yet (CURRENT_BOOTED_USER_ID is null), OR
+     - The session belongs to a different user than the one we booted for
+       (rare, but happens if savePerson's session restore goes sideways)
+     Token refreshes for the same user keep CURRENT_BOOTED_USER_ID === sess.user.id
+     and do nothing — no re-boot, no UI flicker. */
+  if(CURRENT_BOOTED_USER_ID===sess.user.id)return;
+
+  await boot(sess.user);
 });
 
 /* Detect transient errors worth retrying — primarily Supabase's auth-token lock
@@ -1302,13 +1309,11 @@ async function boot(user){
       /* If even after retries we still hit a transient auth lock issue, don't
          throw the user to a login screen — that just makes them re-enter
          credentials only to land in the same race. Show a softer toast and
-         keep their session intact. */
+         try once more after a longer wait. */
       if(isTransientAuthError(error)){
         showToast('Reconnecting…','err');
-        APP_BOOTED=false;
-        /* Try one more time after a longer wait, then either succeed or surface */
         await new Promise(r=>setTimeout(r,1000));
-        const{data:p2,error:e2}=await fetchMyProfile(user.id);
+        const{data:p2}=await fetchMyProfile(user.id);
         if(p2){
           ME=p2;
           await loadAll();
@@ -1316,17 +1321,17 @@ async function boot(user){
           document.getElementById('auth-screen').style.display='none';
           document.getElementById('app').style.display='block';
           gotoDefault();
-          APP_BOOTED=true;
+          CURRENT_BOOTED_USER_ID=user.id;
           return;
         }
-        /* Still failing — show a clearer message, leave them on login */
+        /* Still failing — leave them on login with a clearer message */
         showToast('Could not connect. Try refreshing the page.','err');
-        APP_BOOTED=false;
+        CURRENT_BOOTED_USER_ID=null;
         showAuth();
         return;
       }
       showToast('Profile not found: '+msg,'err');
-      APP_BOOTED=false;
+      CURRENT_BOOTED_USER_ID=null;
       showAuth();
       return;
     }
@@ -1338,13 +1343,14 @@ async function boot(user){
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app').style.display='block';
     gotoDefault();
+    CURRENT_BOOTED_USER_ID=user.id;
   }catch(e){
     if(isTransientAuthError(e)){
       showToast('Connection issue. Try refreshing.','err');
     }else{
       showToast('Login error: '+e.message,'err');
     }
-    APP_BOOTED=false;
+    CURRENT_BOOTED_USER_ID=null;
     showAuth();
   }
 }

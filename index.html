@@ -391,20 +391,64 @@ function setupFilter(){
 
 function renderBoard(){
   setupFilter();
-  const val=document.getElementById('board-filter').value;
-  let tasks=[],title='My Board',sub='Your personal task board';
-  if(val==='mine'||!val){tasks=TASKS.filter(t=>t.assignee_id===ME.id);}
-  else if(val==='all'){tasks=[...TASKS];title='All Tasks';sub='Every task in the org';}
-  else if(val==='team'){const ids=[ME.id,...PROFILES.filter(p=>p.manager_id===ME.id).map(p=>p.id)];tasks=TASKS.filter(t=>ids.includes(t.assignee_id));title='Team Board';sub='Your team tasks';}
-  else{tasks=TASKS.filter(t=>t.assignee_id===val);const per=PROFILES.find(p=>p.id===val);title=(per?per.full_name+"'s":'')+" Board";sub='Viewing their tasks';}
-  document.getElementById('board-title').textContent=title;
-  document.getElementById('board-sub').textContent=sub;
-  const showA=val!=='mine';
-  const canAdd=ME.role==='ceo'||ME.role==='manager'||val==='mine';
-  document.getElementById('kanban-wrap').innerHTML=COLS.map(col=>{
-    const ct=tasks.filter(t=>t.status===col.key);
-    return `<div class="k-col"><div class="k-head"><div class="k-title-row"><div class="k-dot" style="background:${col.color}"></div><div class="k-title">${col.label}</div><div class="k-count">${ct.length}</div></div>${canAdd?`<button class="k-add" onclick="openTaskModal(null,'${col.key}')">+</button>`:''}</div><div class="k-cards" id="col-${col.key}" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}')" ondragleave="onDragLeave(event)">${ct.map(t=>tCardHTML(t,showA)).join('')}${ct.length===0?'<div style="text-align:center;font-size:12px;color:#9ca3af;padding:20px 0">No tasks here</div>':''}</div></div>`;
-  }).join('');
+  const wrap=document.getElementById('kanban-wrap');
+  wrap.style.cssText='display:block;overflow-y:auto;padding-bottom:20px';
+  const r=ME.role;
+  if(r==='member'){
+    document.getElementById('board-title').textContent='My Board';
+    document.getElementById('board-sub').textContent='Your personal task board';
+    wrap.innerHTML=renderPersonBoard(ME,TASKS.filter(t=>t.assignee_id===ME.id),true);
+    return;
+  }
+  let people=[];
+  if(r==='ceo'){
+    document.getElementById('board-title').textContent='Org Board';
+    document.getElementById('board-sub').textContent='All people and their tasks';
+    people=PROFILES;
+  }else{
+    document.getElementById('board-title').textContent='Team Board';
+    document.getElementById('board-sub').textContent='Your team grouped by person';
+    const ids=PROFILES.filter(p=>p.manager_id===ME.id).map(p=>p.id);
+    people=PROFILES.filter(p=>p.id===ME.id||ids.includes(p.id));
+  }
+  if(!people.length){wrap.innerHTML='<div class="empty"><h3>No people found</h3></div>';return;}
+  wrap.innerHTML=people.map(person=>renderPersonBoard(person,TASKS.filter(t=>t.assignee_id===person.id),r==='ceo'||person.id===ME.id)).join('');
+}
+
+function renderPersonBoard(person,tasks,canAdd){
+  const{i,c}=ga(person.full_name);
+  const todo=tasks.filter(t=>t.status==='todo');
+  const inp=tasks.filter(t=>t.status==='in_progress');
+  const done=tasks.filter(t=>t.status==='done');
+  const open=tasks.filter(t=>t.status!=='done').length;
+  const rc={ceo:'#ea580c',manager:'#16a34a',member:'#6b7280'}[person.role]||'#6b7280';
+  return `<div style="margin-bottom:32px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #e2e4e8">
+      <div class="ava ava-md" style="background:${c}">${i}</div>
+      <div>
+        <div style="font-size:16px;font-weight:700">${person.full_name}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">
+          <span style="background:${rc}22;color:${rc};font-weight:700;font-size:10px;text-transform:uppercase;padding:1px 7px;border-radius:5px">${person.role}</span>
+          <span style="margin-left:8px">${open} open · ${tasks.length} total</span>
+        </div>
+      </div>
+      ${canAdd?`<button class="btn btn-acc btn-xs" style="margin-left:auto" onclick="openTaskModal('${person.id}')">+ Task</button>`:''}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      ${[{key:'todo',label:'To Do',color:'#4f8ef7',items:todo},{key:'in_progress',label:'In Progress',color:'#ff6b35',items:inp},{key:'done',label:'Done',color:'#16a34a',items:done}].map(col=>`
+        <div style="background:#fff;border:1.5px solid #e2e4e8;border-radius:10px;overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1.5px solid #e2e4e8;display:flex;align-items:center;gap:8px">
+            <div style="width:7px;height:7px;border-radius:50%;background:${col.color}"></div>
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280">${col.label}</span>
+            <span style="margin-left:auto;font-size:11px;font-weight:700;color:#9ca3af;background:#f4f5f7;padding:1px 7px;border-radius:6px">${col.items.length}</span>
+          </div>
+          <div style="padding:8px;display:flex;flex-direction:column;gap:7px;min-height:80px" ondragover="onDragOver(event)" ondrop="onDrop(event,'${col.key}','${person.id}')" ondragleave="onDragLeave(event)">
+            ${col.items.map(t=>tCardHTML(t,false)).join('')}
+            ${col.items.length===0?'<div style="text-align:center;font-size:12px;color:#d1d5db;padding:16px 0">Empty</div>':''}
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
 }
 
 function tCardHTML(t,showA){
@@ -453,7 +497,7 @@ function onDragEnd(e){
 }
 function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
 function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
-async function onDrop(e,ns){
+async function onDrop(e,ns,personId){
   e.preventDefault();
   e.currentTarget.classList.remove('drag-over');
   if(!dragId)return;

@@ -219,6 +219,146 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 .signout-btn:hover{background:rgba(255,255,255,.18);color:#fff}
 
 /* ============================================================
+   NOTIFICATION BELL + PANEL (Session 5)
+   ============================================================ */
+.bell-btn{
+  position:relative;
+  width:34px;height:34px;
+  background:rgba(255,255,255,.08);
+  border:none;border-radius:50%;
+  color:rgba(255,255,255,.85);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .14s,color .14s;
+}
+.bell-btn:hover{background:rgba(255,255,255,.18);color:#fff}
+.bell-count{
+  position:absolute;top:-2px;right:-2px;
+  min-width:16px;height:16px;
+  padding:0 4px;
+  background:#eb5a46;color:#fff;
+  border-radius:8px;
+  font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 2px #1d2125;
+}
+body:not(.not-board) .bell-count{box-shadow:0 0 0 2px rgba(0,0,0,.5)}
+
+.notif-panel{
+  position:fixed;
+  top:54px;right:20px;
+  width:340px;
+  max-height:500px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 12px 32px rgba(9,30,66,.25),0 0 0 1px rgba(9,30,66,.08);
+  z-index:400;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.notif-head{
+  padding:12px 16px;
+  border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:13px;font-weight:700;color:var(--ink);
+}
+.notif-list{flex:1;overflow-y:auto}
+.notif-empty{
+  padding:32px 20px;
+  text-align:center;
+  font-size:13px;color:var(--muted-soft);
+}
+.notif-item{
+  padding:12px 16px;
+  border-bottom:1px solid var(--line-soft);
+  cursor:pointer;
+  transition:background .14s;
+}
+.notif-item:last-child{border-bottom:none}
+.notif-item:hover{background:#fafbfc}
+.notif-item-from{
+  font-size:13px;color:var(--ink);
+  margin-bottom:3px;
+}
+.notif-item-from b{font-weight:700}
+.notif-item-task{
+  font-size:12px;color:var(--accent);
+  font-weight:600;
+  margin-bottom:3px;
+}
+.notif-item-snippet{
+  font-size:12px;color:var(--muted);
+  line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.notif-item-time{
+  font-size:11px;color:var(--muted-soft);
+  margin-top:4px;
+}
+
+/* ============================================================
+   ACTIVITY LOG (Session 5)
+   ============================================================ */
+.activity-section{
+  border-top:1px solid var(--line-soft);
+  margin-top:18px;padding-top:18px;
+}
+.activity-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.activity-list{
+  display:flex;flex-direction:column;gap:6px;
+}
+.activity-item{
+  display:flex;gap:8px;align-items:flex-start;
+  padding:6px 4px;
+  font-size:12px;color:var(--ink-soft);
+  line-height:1.5;
+}
+.activity-item .ava{width:20px;height:20px;font-size:8px;flex-shrink:0;margin-top:1px}
+.activity-text b{font-weight:700;color:var(--ink)}
+.activity-text .activity-action{color:var(--muted)}
+.activity-time{
+  font-size:11px;color:var(--muted-soft);
+  margin-left:6px;
+}
+
+/* ============================================================
+   @MENTION CHIPS + AUTOCOMPLETE (Session 5)
+   ============================================================ */
+.mention-chip{
+  display:inline-block;
+  background:rgba(0,121,191,.12);
+  color:#055a8c;
+  font-weight:600;
+  padding:1px 6px;
+  border-radius:4px;
+  font-size:0.95em;
+}
+.mention-popup{
+  position:absolute;
+  background:#fff;
+  border-radius:8px;
+  box-shadow:0 8px 20px rgba(9,30,66,.2),0 0 0 1px rgba(9,30,66,.08);
+  z-index:9000;
+  min-width:220px;max-width:280px;
+  max-height:240px;
+  overflow-y:auto;
+  display:none;
+}
+.mention-popup.open{display:block}
+.mention-popup-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;
+  cursor:pointer;
+  transition:background .14s;
+}
+.mention-popup-row:hover,.mention-popup-row.active{background:rgba(0,121,191,.08)}
+.mention-popup-name{font-size:13px;font-weight:600;color:var(--ink)}
+.mention-popup-role{font-size:11px;color:var(--muted-soft)}
+
+/* ============================================================
    PAGES
    ============================================================ */
 .page{display:none}
@@ -841,6 +981,7 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
 </div>
 
 <div id="toast"></div>
+<div class="mention-popup" id="mention-popup"></div>
 
 <div id="app">
   <div class="topbar">
@@ -849,6 +990,17 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
       <nav class="tb-nav" id="tb-nav"></nav>
     </div>
     <div class="tb-right">
+      <button class="bell-btn" id="bell-btn" onclick="toggleNotifPanel(event)" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="bell-count" id="bell-count" style="display:none">0</span>
+      </button>
+      <div class="notif-panel" id="notif-panel" style="display:none">
+        <div class="notif-head">
+          <span>Notifications</span>
+          <button class="btn btn-ghost btn-xs" id="notif-mark-all" onclick="markAllMentionsRead()" style="display:none">Mark all read</button>
+        </div>
+        <div class="notif-list" id="notif-list"></div>
+      </div>
       <div class="user-chip"><div class="ava" id="top-ava"></div><span class="uname" id="top-name"></span><span class="role-tag" id="top-role"></span></div>
       <button class="signout-btn" onclick="doLogout()">Sign out</button>
     </div>
@@ -952,12 +1104,21 @@ body.not-board .topbar{background:#1d2125;border-bottom-color:rgba(255,255,255,.
         <div id="d-checklist-add"></div>
       </div>
 
+      <!-- Activity log section (Session 5) -->
+      <div class="activity-section" id="d-activity-section">
+        <div class="activity-head">
+          <div class="c-title" style="margin-bottom:0">Activity</div>
+          <button class="btn btn-ghost btn-xs" id="d-activity-toggle" onclick="toggleActivityList()">Show all</button>
+        </div>
+        <div class="activity-list" id="d-activity-list"></div>
+      </div>
+
       <div class="comments-wrap">
         <div class="c-title">Comments</div>
         <div class="c-list" id="c-list"></div>
         <div class="c-input-row">
           <div class="ava" id="c-ava" style="flex-shrink:0;margin-bottom:2px"></div>
-          <textarea class="cinput" id="cinput" maxlength="2000" placeholder="Add a comment... (Enter to post)" rows="1"></textarea>
+          <textarea class="cinput" id="cinput" maxlength="2000" placeholder="Add a comment... (use @ to mention someone)" rows="1"></textarea>
           <button class="btn btn-acc btn-sm" onclick="addComment()" style="flex-shrink:0">Post</button>
         </div>
       </div>
@@ -1097,6 +1258,76 @@ async function loadAll(){
     (comments||[]).forEach(c=>{counts[c.task_id]=(counts[c.task_id]||0)+1;});
     TASKS=TASKS.map(t=>({...t,_comment_count:counts[t.id]||0}));
   }catch(e){/* ignore */}
+  /* Load my unread mentions for the bell badge (Session 5) */
+  await loadMyMentions();
+}
+
+/* ============================================================
+   ACTIVITY LOGGER (Session 5)
+   Compares old and new task fields, writes activity rows.
+   Returns silently on error — activity is best-effort, must not
+   break the underlying task save.
+   ============================================================ */
+async function logActivity(taskId,action,fromVal,toVal){
+  try{
+    await sb.from('activity').insert({
+      task_id:taskId,
+      actor_id:ME.id,
+      action,
+      from_val:fromVal!=null?String(fromVal):null,
+      to_val:toVal!=null?String(toVal):null
+    });
+  }catch(e){/* ignore */}
+}
+
+/* Diff old and new task, log everything that changed */
+async function logTaskDiff(taskId,oldT,newT){
+  if(!oldT||!newT)return;
+  const fields=[
+    {key:'status',action:'status'},
+    {key:'priority',action:'priority'},
+    {key:'assignee_id',action:'assignee'},
+    {key:'due_date',action:'due_date'}
+  ];
+  for(const f of fields){
+    if((oldT[f.key]||null)!==(newT[f.key]||null)){
+      await logActivity(taskId,f.action,oldT[f.key],newT[f.key]);
+    }
+  }
+  /* Title change */
+  if((oldT.title||'')!==(newT.title||'')){
+    await logActivity(taskId,'title',oldT.title,newT.title);
+  }
+  /* Description change — log just that it changed, not the new content (could be huge) */
+  if((oldT.description||'')!==(newT.description||'')){
+    await logActivity(taskId,'description',null,null);
+  }
+}
+
+/* ============================================================
+   MENTIONS — load my unread mentions for the bell (Session 5)
+   ============================================================ */
+let MY_MENTIONS=[];
+async function loadMyMentions(){
+  if(!ME)return;
+  try{
+    const{data}=await sb.from('mentions')
+      .select('*,comment:comments(body,task_id,created_at,author_id)')
+      .eq('mentioned_user_id',ME.id)
+      .eq('read',false)
+      .order('created_at',{ascending:false})
+      .limit(20);
+    MY_MENTIONS=data||[];
+  }catch(e){MY_MENTIONS=[];}
+  renderBellCount();
+}
+
+function renderBellCount(){
+  const el=document.getElementById('bell-count');
+  if(!el)return;
+  const n=MY_MENTIONS.length;
+  if(n===0){el.style.display='none';}
+  else{el.style.display='';el.textContent=n>9?'9+':String(n);}
 }
 async function doLogin(){
   const email=document.getElementById('inp-email').value.trim();
@@ -1528,6 +1759,9 @@ async function onDrop(e,ns,personId){
     showToast('Error: '+error.message,'err');
     await loadAll();renderBoard();
   }else{
+    /* Log activity for what changed */
+    if(t.status!==ns)logActivity(dragId,'status',t.status,ns);
+    if(isReassign)logActivity(dragId,'assignee',t.assignee_id,newAssignee);
     if(isReassign){
       const newPerson=PROFILES.find(p=>p.id===newAssignee);
       const colLabel=COLS.find(c=>c.key===ns).label;
@@ -1560,12 +1794,17 @@ async function saveTask(){
   if(!title){showToast('Enter a task title','err');return;}
   const payload={title,description:document.getElementById('t-desc').value.trim()||null,assignee_id:document.getElementById('t-assignee').value||null,priority:document.getElementById('t-priority').value,status:document.getElementById('t-status').value,due_date:document.getElementById('t-due').value||null,created_by:ME.id};
   if(activeTaskId){
+    const oldT=TASKS.find(x=>x.id===activeTaskId);
     const{error}=await sb.from('tasks').update(payload).eq('id',activeTaskId);
     if(error){showToast('Error: '+error.message,'err');return;}
+    /* Log any field changes */
+    if(oldT)await logTaskDiff(activeTaskId,oldT,payload);
     showToast('Task updated','ok');
   }else{
-    const{error}=await sb.from('tasks').insert(payload);
+    const{data,error}=await sb.from('tasks').insert(payload).select().single();
     if(error){showToast('Error: '+error.message,'err');return;}
+    /* Log creation */
+    if(data)await logActivity(data.id,'created',null,null);
     showToast('Task created','ok');
   }
   closeModal('m-task');await loadAll();
@@ -1604,6 +1843,15 @@ async function openDetail(taskId){
   /* Render checklist */
   renderChecklistForTask(t);
 
+  /* Load activity log (Session 5) */
+  ACTIVITY_EXPANDED=false;
+  ACTIVITY_FOR_TASK=[];
+  renderActivityList();
+  loadActivityForTask(taskId);
+
+  /* Auto-mark any unread mentions for this task as read */
+  await markMentionsReadForTask(taskId);
+
   const{i,c}=ga(ME.full_name);const ca=document.getElementById('c-ava');ca.textContent=i;ca.style.background=c;
   const{data:comments}=await sb.from('comments').select('*').eq('task_id',taskId).order('created_at');
   renderComments(comments||[]);
@@ -1612,6 +1860,337 @@ async function openDetail(taskId){
 /* ============================================================
    LABELS — render and edit (Session 3)
    ============================================================ */
+/* ============================================================
+   ACTIVITY rendering (Session 5)
+   ============================================================ */
+let ACTIVITY_FOR_TASK=[];
+let ACTIVITY_EXPANDED=false;
+
+async function loadActivityForTask(taskId){
+  if(!taskId)return;
+  try{
+    const{data}=await sb.from('activity')
+      .select('*')
+      .eq('task_id',taskId)
+      .order('created_at',{ascending:false})
+      .limit(50);
+    ACTIVITY_FOR_TASK=data||[];
+  }catch(e){ACTIVITY_FOR_TASK=[];}
+  renderActivityList();
+}
+
+function activityToText(a){
+  const actor=PROFILES.find(p=>p.id===a.actor_id);
+  const actorName=actor?actor.full_name:'Someone';
+  const sl={todo:'To Do',in_progress:'In Progress',done:'Done'};
+  switch(a.action){
+    case 'created':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">created this task</span>`;
+    case 'status':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">moved status</span> <b>${esc(sl[a.from_val]||a.from_val||'?')}</b> <span class="activity-action">→</span> <b>${esc(sl[a.to_val]||a.to_val||'?')}</b>`;
+    case 'priority':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">changed priority to</span> <b>${esc(a.to_val||'?')}</b>`;
+    case 'assignee': {
+      const fromP=PROFILES.find(p=>p.id===a.from_val);
+      const toP=PROFILES.find(p=>p.id===a.to_val);
+      const fromName=fromP?fromP.full_name:(a.from_val?'Unknown':'Unassigned');
+      const toName=toP?toP.full_name:(a.to_val?'Unknown':'Unassigned');
+      return `<b>${esc(actorName)}</b> <span class="activity-action">reassigned</span> <b>${esc(fromName)}</b> <span class="activity-action">→</span> <b>${esc(toName)}</b>`;
+    }
+    case 'due_date':
+      if(!a.from_val&&a.to_val)return `<b>${esc(actorName)}</b> <span class="activity-action">set due date to</span> <b>${esc(a.to_val)}</b>`;
+      if(a.from_val&&!a.to_val)return `<b>${esc(actorName)}</b> <span class="activity-action">removed the due date</span>`;
+      return `<b>${esc(actorName)}</b> <span class="activity-action">changed due date to</span> <b>${esc(a.to_val||'?')}</b>`;
+    case 'title':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">renamed the task</span>`;
+    case 'description':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">updated the description</span>`;
+    case 'label_added': {
+      const L=labelByKey(a.to_val);
+      return `<b>${esc(actorName)}</b> <span class="activity-action">added label</span> <b>${esc(L?L.name:a.to_val||'?')}</b>`;
+    }
+    case 'label_removed': {
+      const L=labelByKey(a.to_val);
+      return `<b>${esc(actorName)}</b> <span class="activity-action">removed label</span> <b>${esc(L?L.name:a.to_val||'?')}</b>`;
+    }
+    case 'checklist_added':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">added checklist item</span> <b>${esc(a.to_val||'')}</b>`;
+    case 'checklist_done':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">completed</span> <b>${esc(a.to_val||'')}</b>`;
+    case 'checklist_undone':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">unchecked</span> <b>${esc(a.to_val||'')}</b>`;
+    case 'checklist_deleted':
+      return `<b>${esc(actorName)}</b> <span class="activity-action">removed checklist item</span> <b>${esc(a.to_val||'')}</b>`;
+    default:
+      return `<b>${esc(actorName)}</b> <span class="activity-action">${esc(a.action)}</span>`;
+  }
+}
+
+function renderActivityList(){
+  const el=document.getElementById('d-activity-list');
+  if(!el)return;
+  const toggle=document.getElementById('d-activity-toggle');
+  const items=ACTIVITY_EXPANDED?ACTIVITY_FOR_TASK:ACTIVITY_FOR_TASK.slice(0,5);
+  if(toggle){
+    if(ACTIVITY_FOR_TASK.length>5){
+      toggle.style.display='';
+      toggle.textContent=ACTIVITY_EXPANDED?'Show less':`Show all (${ACTIVITY_FOR_TASK.length})`;
+    }else{
+      toggle.style.display='none';
+    }
+  }
+  if(!ACTIVITY_FOR_TASK.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--muted-soft);padding:6px 4px">No activity yet.</div>';
+    return;
+  }
+  el.innerHTML=items.map(a=>{
+    const actor=PROFILES.find(p=>p.id===a.actor_id);
+    const{i,c}=actor?ga(actor.full_name):{i:'?',c:'#9ca3af'};
+    return `<div class="activity-item">
+      <div class="ava" style="background:${c}">${esc(i)}</div>
+      <div style="flex:1;min-width:0">
+        <span class="activity-text">${activityToText(a)}</span>
+        <span class="activity-time" title="${esc(fullTime(a.created_at))}">${esc(relativeTime(a.created_at))}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleActivityList(){
+  ACTIVITY_EXPANDED=!ACTIVITY_EXPANDED;
+  renderActivityList();
+}
+
+/* ============================================================
+   @MENTIONS — parsing, autocomplete, rendering (Session 5)
+   ============================================================ */
+
+/* Parse "Hey @Akash Saxena please review" into mentioned profile IDs.
+   We match the longest possible name from the @ position. */
+function parseMentions(text){
+  if(!text)return [];
+  const mentioned=new Set();
+  /* Build a map of profile name → id, longest first to greedy-match */
+  const sortedProfiles=[...PROFILES].sort((a,b)=>(b.full_name||'').length-(a.full_name||'').length);
+  /* Walk through every @ in text */
+  let i=0;
+  while((i=text.indexOf('@',i))!==-1){
+    const after=text.slice(i+1);
+    let matched=null;
+    for(const p of sortedProfiles){
+      const name=p.full_name||'';
+      if(!name)continue;
+      if(after.toLowerCase().startsWith(name.toLowerCase())){
+        /* boundary check: char after the name must be non-word or end */
+        const nextCh=after.charAt(name.length);
+        if(!nextCh||!/[\w]/.test(nextCh)){
+          matched=p;
+          break;
+        }
+      }
+    }
+    if(matched){
+      mentioned.add(matched.id);
+      i+=1+matched.full_name.length;
+    }else{
+      i+=1;
+    }
+  }
+  return [...mentioned];
+}
+
+/* Render @Name patterns inside a comment as mention chips.
+   We escape first, then replace @Name with chip HTML. Safe because
+   we only recognize known profile names (no arbitrary HTML injection). */
+function renderCommentBody(body){
+  /* Escape entire body */
+  let html=esc(body||'');
+  /* Sort by name length desc so "Akash Saxena" matches before "Akash" */
+  const sorted=[...PROFILES].sort((a,b)=>(b.full_name||'').length-(a.full_name||'').length);
+  for(const p of sorted){
+    if(!p.full_name)continue;
+    /* Re-escape the name as it would appear in the escaped body */
+    const escName=esc(p.full_name);
+    /* Match @escName followed by non-word boundary (or end) */
+    const re=new RegExp('@'+escName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?=[^\\w]|$)','g');
+    html=html.replace(re,'<span class="mention-chip">@'+escName+'</span>');
+  }
+  return html;
+}
+
+/* ── Autocomplete popup state ── */
+let mentionAnchorPos=-1;       /* position of the @ in the textarea */
+let mentionFiltered=[];        /* current filtered profile list */
+let mentionSelectedIdx=0;
+let mentionTextarea=null;       /* which textarea is active */
+
+function closeMentionPopup(){
+  const pop=document.getElementById('mention-popup');
+  pop.classList.remove('open');
+  mentionAnchorPos=-1;
+  mentionFiltered=[];
+  mentionTextarea=null;
+}
+
+function openMentionPopup(textarea,anchorPos,query){
+  mentionTextarea=textarea;
+  mentionAnchorPos=anchorPos;
+  /* Filter profiles by query (case-insensitive substring of name) */
+  const q=(query||'').toLowerCase();
+  mentionFiltered=PROFILES
+    .filter(p=>p.id!==ME.id)
+    .filter(p=>!q||(p.full_name||'').toLowerCase().includes(q))
+    .slice(0,8);
+  if(!mentionFiltered.length){closeMentionPopup();return;}
+  mentionSelectedIdx=0;
+  /* Position popup just below the textarea */
+  const rect=textarea.getBoundingClientRect();
+  const pop=document.getElementById('mention-popup');
+  pop.style.left=rect.left+'px';
+  pop.style.top=(rect.bottom+window.scrollY+4)+'px';
+  pop.classList.add('open');
+  renderMentionPopup();
+}
+
+function renderMentionPopup(){
+  const pop=document.getElementById('mention-popup');
+  pop.innerHTML=mentionFiltered.map((p,idx)=>{
+    const{i,c}=ga(p.full_name);
+    return `<div class="mention-popup-row${idx===mentionSelectedIdx?' active':''}"
+        onmouseover="mentionSelectedIdx=${idx};renderMentionPopup()"
+        onclick="acceptMention(${idx})">
+      <div class="ava" style="background:${c}">${esc(i)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="mention-popup-name">${esc(p.full_name)}</div>
+        <div class="mention-popup-role">${esc(p.role)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function acceptMention(idx){
+  if(!mentionTextarea||idx<0||idx>=mentionFiltered.length){closeMentionPopup();return;}
+  const p=mentionFiltered[idx];
+  const ta=mentionTextarea;
+  const cursor=ta.selectionStart;
+  const before=ta.value.slice(0,mentionAnchorPos);
+  const after=ta.value.slice(cursor);
+  const insertion='@'+p.full_name+' ';
+  ta.value=before+insertion+after;
+  const newCursor=before.length+insertion.length;
+  ta.focus();
+  ta.setSelectionRange(newCursor,newCursor);
+  closeMentionPopup();
+}
+
+/* Wire input/keydown on the comment textarea (only on the comment textarea, not the task description) */
+function handleCommentInput(e){
+  const ta=e.target;
+  const pos=ta.selectionStart;
+  const upto=ta.value.slice(0,pos);
+  /* Find last @ that isn't already part of a complete mention. Simplest: find last @ with
+     no whitespace between it and cursor. */
+  const lastAt=upto.lastIndexOf('@');
+  if(lastAt===-1){closeMentionPopup();return;}
+  const tail=upto.slice(lastAt+1);
+  /* Bail if there's whitespace OR more than 30 chars (probably a stale @) */
+  if(/\s/.test(tail)||tail.length>30){closeMentionPopup();return;}
+  /* Bail if the char before @ is alphanumeric (probably an email like foo@bar) */
+  const beforeAt=upto.charAt(lastAt-1);
+  if(beforeAt&&/[\w]/.test(beforeAt)){closeMentionPopup();return;}
+  openMentionPopup(ta,lastAt,tail);
+}
+
+function handleCommentKeydown(e){
+  const popOpen=document.getElementById('mention-popup').classList.contains('open');
+  if(popOpen){
+    if(e.key==='ArrowDown'){e.preventDefault();mentionSelectedIdx=(mentionSelectedIdx+1)%mentionFiltered.length;renderMentionPopup();return;}
+    if(e.key==='ArrowUp'){e.preventDefault();mentionSelectedIdx=(mentionSelectedIdx-1+mentionFiltered.length)%mentionFiltered.length;renderMentionPopup();return;}
+    if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();acceptMention(mentionSelectedIdx);return;}
+    if(e.key==='Escape'){e.preventDefault();closeMentionPopup();return;}
+  }
+  /* Original Enter-to-post behaviour, only when popup not open */
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addComment();}
+}
+
+/* ============================================================
+   NOTIFICATION BELL panel (Session 5)
+   ============================================================ */
+function toggleNotifPanel(e){
+  e&&e.stopPropagation();
+  const panel=document.getElementById('notif-panel');
+  const showing=panel.style.display!=='none';
+  panel.style.display=showing?'none':'';
+  if(!showing)renderNotifPanel();
+}
+
+/* Close panel when clicking outside */
+document.addEventListener('click',e=>{
+  const panel=document.getElementById('notif-panel');
+  const bell=document.getElementById('bell-btn');
+  if(!panel||!bell)return;
+  if(panel.style.display==='none')return;
+  if(panel.contains(e.target)||bell.contains(e.target))return;
+  panel.style.display='none';
+});
+
+function renderNotifPanel(){
+  const list=document.getElementById('notif-list');
+  const markAllBtn=document.getElementById('notif-mark-all');
+  if(!MY_MENTIONS.length){
+    list.innerHTML='<div class="notif-empty">No new notifications</div>';
+    markAllBtn.style.display='none';
+    return;
+  }
+  markAllBtn.style.display='';
+  list.innerHTML=MY_MENTIONS.map(m=>{
+    const c=m.comment;
+    if(!c)return '';
+    const author=PROFILES.find(p=>p.id===c.author_id);
+    const task=TASKS.find(t=>t.id===c.task_id);
+    const authorName=author?author.full_name:'Someone';
+    const taskTitle=task?task.title:'a task';
+    return `<div class="notif-item" onclick="openMentionTarget('${esc(c.task_id)}')">
+      <div class="notif-item-from"><b>${esc(authorName)}</b> mentioned you</div>
+      <div class="notif-item-task">${esc(taskTitle)}</div>
+      <div class="notif-item-snippet">${esc(c.body||'')}</div>
+      <div class="notif-item-time">${esc(relativeTime(c.created_at))}</div>
+    </div>`;
+  }).join('');
+}
+
+async function openMentionTarget(taskId){
+  document.getElementById('notif-panel').style.display='none';
+  /* Make sure we know about this task; if not, reload */
+  if(!TASKS.find(t=>t.id===taskId))await loadAll();
+  openDetail(taskId);
+}
+
+async function markMentionsReadForTask(taskId){
+  if(!ME||!taskId)return;
+  /* Find any of MY_MENTIONS that point at this task and mark them read */
+  const targets=MY_MENTIONS.filter(m=>m.comment&&m.comment.task_id===taskId).map(m=>m.id);
+  if(!targets.length)return;
+  try{
+    await sb.from('mentions').update({read:true}).in('id',targets);
+    MY_MENTIONS=MY_MENTIONS.filter(m=>!targets.includes(m.id));
+    renderBellCount();
+    renderNotifPanel();
+  }catch(e){/* ignore */}
+}
+
+async function markAllMentionsRead(){
+  if(!MY_MENTIONS.length)return;
+  const ids=MY_MENTIONS.map(m=>m.id);
+  try{
+    await sb.from('mentions').update({read:true}).in('id',ids);
+    MY_MENTIONS=[];
+    renderBellCount();
+    renderNotifPanel();
+    showToast('All caught up','ok');
+  }catch(e){showToast('Error: '+e.message,'err');}
+}
+
 function renderLabelsForTask(t,canEdit){
   const labels=Array.isArray(t.labels)?t.labels:[];
   const display=document.getElementById('d-labels-display');
@@ -1669,6 +2248,11 @@ async function toggleLabel(labelKey){
     renderLabelsForTask(t,canEdit);
     return;
   }
+  /* Log activity: was this an add or remove? */
+  const wasInOld=Array.isArray(t.labels)&&t.labels.includes(labelKey);
+  await logActivity(activeTaskId,wasInOld?'label_removed':'label_added',null,labelKey);
+  /* Refresh activity list if modal is open */
+  loadActivityForTask(activeTaskId);
   /* Re-render the board so card-level labels update */
   if(document.getElementById('pg-board').classList.contains('active'))renderBoard();
 }
@@ -1760,6 +2344,8 @@ async function addChecklistItem(){
   cur.push({text,done:false});
   inp.value='';
   await persistChecklist(cur);
+  await logActivity(activeTaskId,'checklist_added',null,text);
+  loadActivityForTask(activeTaskId);
   /* Refocus input for rapid sequential adds */
   const newInp=document.getElementById('checklist-new-text');
   if(newInp)newInp.focus();
@@ -1774,8 +2360,11 @@ async function toggleChecklistItem(idx){
   if(!canEditChecklist(t)){showToast('No permission','err');return;}
   const cur=Array.isArray(t.checklist)?t.checklist.slice():[];
   if(idx<0||idx>=cur.length)return;
-  cur[idx]={...cur[idx],done:!cur[idx].done};
+  const item=cur[idx];
+  cur[idx]={...item,done:!item.done};
   await persistChecklist(cur);
+  await logActivity(activeTaskId,cur[idx].done?'checklist_done':'checklist_undone',null,item.text);
+  loadActivityForTask(activeTaskId);
 }
 
 async function deleteChecklistItem(idx){
@@ -1783,8 +2372,11 @@ async function deleteChecklistItem(idx){
   if(!canEditChecklist(t)){showToast('No permission','err');return;}
   const cur=Array.isArray(t.checklist)?t.checklist.slice():[];
   if(idx<0||idx>=cur.length)return;
+  const removed=cur[idx];
   cur.splice(idx,1);
   await persistChecklist(cur);
+  await logActivity(activeTaskId,'checklist_deleted',null,removed.text);
+  loadActivityForTask(activeTaskId);
 }
 
 function renderComments(comments){
@@ -1794,28 +2386,47 @@ function renderComments(comments){
     const auth=PROFILES.find(p=>p.id===c.author_id);
     const{i,col}=auth?{i:ga(auth.full_name).i,col:ga(auth.full_name).c}:{i:'?',col:'#9ca3af'};
     const time=new Date(c.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    /* SECURITY: comment body and author name escaped */
-    return `<div class="c-item"><div class="ava" style="background:${col};flex-shrink:0;width:32px;height:32px;font-size:11px">${esc(i)}</div><div class="c-body"><div class="c-meta"><span class="c-author">${auth?esc(auth.full_name):'Unknown'}</span><span class="c-time">${esc(time)}</span></div><div class="c-text">${esc(c.body)}</div></div></div>`;
+    /* SECURITY: body is escaped inside renderCommentBody before chip substitution */
+    return `<div class="c-item"><div class="ava" style="background:${col};flex-shrink:0;width:32px;height:32px;font-size:11px">${esc(i)}</div><div class="c-body"><div class="c-meta"><span class="c-author">${auth?esc(auth.full_name):'Unknown'}</span><span class="c-time">${esc(time)}</span></div><div class="c-text">${renderCommentBody(c.body)}</div></div></div>`;
   }).join('');
   el.scrollTop=el.scrollHeight;
 }
 async function addComment(){
   const inp=document.getElementById('cinput');
   const body=inp.value.trim();if(!body||!activeTaskId)return;
-  const{error}=await sb.from('comments').insert({task_id:activeTaskId,author_id:ME.id,body});
+  const{data:inserted,error}=await sb.from('comments').insert({task_id:activeTaskId,author_id:ME.id,body}).select().single();
   if(error){showToast('Error posting comment','err');return;}
   inp.value='';
+  closeMentionPopup();
+
+  /* Parse @mentions and create mention rows (Session 5) */
+  if(inserted){
+    const ids=parseMentions(body).filter(uid=>uid!==ME.id);
+    if(ids.length){
+      const rows=ids.map(uid=>({comment_id:inserted.id,mentioned_user_id:uid}));
+      try{await sb.from('mentions').insert(rows);}catch(e){/* ignore */}
+    }
+  }
+
   const{data:comments}=await sb.from('comments').select('*').eq('task_id',activeTaskId).order('created_at');
   renderComments(comments||[]);
   TASKS=TASKS.map(t=>t.id===activeTaskId?{...t,_comment_count:(t._comment_count||0)+1}:t);
   showToast('Comment posted','ok');
 }
-document.getElementById('cinput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addComment();}});
+/* Comment box wires both autocomplete and Enter-to-post (Session 5) */
+document.getElementById('cinput').addEventListener('input',handleCommentInput);
+document.getElementById('cinput').addEventListener('keydown',handleCommentKeydown);
+document.getElementById('cinput').addEventListener('blur',()=>{setTimeout(closeMentionPopup,150);});
 
 async function quickStatus(taskId,status){
+  const oldT=TASKS.find(t=>t.id===taskId);
+  const oldStatus=oldT?oldT.status:null;
   TASKS=TASKS.map(t=>t.id===taskId?{...t,status,updated_at:new Date().toISOString()}:t);
   await sb.from('tasks').update({status}).eq('id',taskId);
+  if(oldStatus&&oldStatus!==status)logActivity(taskId,'status',oldStatus,status);
   showToast('Status updated','ok');renderBoard();
+  /* If detail modal is showing this task, refresh activity list */
+  if(activeTaskId===taskId)loadActivityForTask(taskId);
 }
 function editFromDetail(){
   const t=TASKS.find(x=>x.id===activeTaskId);if(!t)return;

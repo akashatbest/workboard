@@ -1159,6 +1159,52 @@ body:not(.not-board) .bell-count{box-shadow:0 0 0 2px rgba(0,0,0,.5)}
 </div>
 
 <script>
+/* ============================================================
+   SUPABASE AUTH LOCK CLEANUP (runs before client init)
+   The Supabase JS v2 SDK uses the browser's Web Locks API to
+   prevent concurrent token refreshes across tabs. If a previous
+   session was abandoned mid-refresh (hard close, crash, or our
+   own auth bugs earlier), the lock entry in localStorage can be
+   left in a corrupted state. The SDK then waits forever for a
+   lock that will never be released — manifesting as a hung
+   "Signing in..." button with Promise {<pending>} and no error.
+   This cleanup runs once on every page load, BEFORE the Supabase
+   client is created, so it never encounters the corrupted state.
+   ============================================================ */
+(function cleanSupabaseLocks(){
+  try{
+    const staleKeys=Object.keys(localStorage).filter(k=>
+      k.startsWith('sb-')&&(
+        k.includes('-lock')      /* explicit lock entries */
+        || k.includes('auth-token') /* token that may be stale */
+      )
+    );
+    /* Only clear if the token is clearly stale — i.e. the stored
+       session's expires_at is in the past. Don't nuke valid sessions. */
+    staleKeys.forEach(k=>{
+      if(k.includes('auth-token')){
+        try{
+          const raw=localStorage.getItem(k);
+          if(!raw)return;
+          const parsed=JSON.parse(raw);
+          const expiresAt=parsed?.expires_at||parsed?.session?.expires_at;
+          if(expiresAt&&expiresAt*1000<Date.now()){
+            /* Token is expired — safe to remove, Supabase will re-auth */
+            localStorage.removeItem(k);
+          }
+        }catch(e){
+          /* Unparseable entry — corrupted. Remove it. */
+          localStorage.removeItem(k);
+        }
+      }else if(k.includes('-lock')){
+        /* Lock entries should never persist across page loads.
+           If one is here, it's a leftover from a crashed tab. */
+        localStorage.removeItem(k);
+      }
+    });
+  }catch(e){/* storage may be unavailable in some contexts — ignore */}
+})();
+
 const SB_URL='https://uvrypfufkivylnrnxegi.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2cnlwZnVma2l2eWxucm54ZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNzgxMDcsImV4cCI6MjA5Mjk1NDEwN30.y6PQm35mgNx8xXY-hd_pQ3oR8maQeAmiPqfAziyFaCo';
 const sb=supabase.createClient(SB_URL,SB_KEY);
